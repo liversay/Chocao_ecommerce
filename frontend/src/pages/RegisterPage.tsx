@@ -5,6 +5,7 @@ import { useApi } from "../hooks/useApi";
 import EmailOtpForm from "../components/EmailOtpForm";
 import AuthMethodTabs from "../components/AuthMethodTabs";
 import Logo from "../components/Logo";
+import Card from "../components/Card";
 
 export default function RegisterPage() {
   const { isSignedIn } = useAuth();
@@ -30,83 +31,31 @@ export default function RegisterPage() {
   return (
     <div
       style={{
-        display: "grid",
-        gridTemplateColumns: "1fr 1fr",
         minHeight: "calc(100vh - 72px)",
-        background: "var(--bg)",
+        background: "var(--bg-alt)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "var(--sp-6) var(--sp-5)",
       }}
     >
-      {/* Left: branded panel */}
-      <div
-        style={{
-          background: "var(--bg-deep)",
-          padding: "var(--sp-7)",
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
-        }}
-      >
-        <Link to="/" style={{ display: "inline-flex", alignItems: "center", gap: "10px", marginBottom: "var(--sp-7)" }}>
-          <Logo size={44} />
-          <span style={{ fontWeight: 800, fontSize: "var(--t-md)", color: "var(--text)", letterSpacing: "-0.02em" }}>
-            Chocao
-          </span>
-        </Link>
+      <div style={{ width: "100%", maxWidth: 440 }}>
+        <Card variant="elevated" padding="lg">
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: "var(--sp-4)" }}>
+            <Logo size={40} />
+          </div>
 
-        <h1 style={{ fontSize: "var(--t-2xl)", color: "var(--text)", marginBottom: "var(--sp-4)", letterSpacing: "-0.03em", lineHeight: 1.15 }}>
-          Únete a Chocao
-        </h1>
-        <p style={{ color: "var(--text-muted)", fontSize: "var(--t-md)", lineHeight: 1.6, maxWidth: 380, marginBottom: "var(--sp-6)" }}>
-          Crea tu cuenta gratuita y obtén acceso al catálogo completo de subastas oficiales
-          del Estado panameño.
-        </p>
-
-        <ul style={{ display: "flex", flexDirection: "column", gap: "var(--sp-3)", listStyle: "none", padding: 0 }}>
-          {[
-            "Acceso a todo el catálogo de vehículos",
-            "Participación en subastas activas",
-            "Notificaciones de pujas y adjudicaciones",
-            "Pagos seguros con respaldo institucional",
-          ].map((item) => (
-            <li key={item} style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "var(--t-sm)", color: "var(--text)" }}>
-              <span style={{
-                width: 22, height: 22,
-                borderRadius: "50%",
-                background: "var(--success-soft)",
-                color: "var(--success)",
-                display: "inline-flex", alignItems: "center", justifyContent: "center",
-                fontSize: "0.7rem", fontWeight: 700,
-                flexShrink: 0,
-              }}>✓</span>
-              {item}
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      {/* Right: auth form */}
-      <div style={{ padding: "var(--sp-7)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <div style={{ width: "100%", maxWidth: 420 }}>
-          <h2 style={{ fontSize: "var(--t-lg)", marginBottom: "var(--sp-2)", color: "var(--text)" }}>
+          <h1 style={{ fontSize: "var(--t-xl)", textAlign: "center", marginBottom: "var(--sp-1)" }}>
             Crear cuenta
-          </h2>
-          <p style={{ color: "var(--text-muted)", fontSize: "var(--t-sm)", marginBottom: "var(--sp-5)" }}>
+          </h1>
+          <p style={{ color: "var(--text-muted)", fontSize: "var(--t-sm)", textAlign: "center", marginBottom: "var(--sp-5)" }}>
             Es gratis y solo toma un minuto
           </p>
 
           <AuthMethodTabs active={method} onChange={setMethod} />
 
           {method === "otp" ? (
-            <div
-              style={{
-                background: "var(--surface)",
-                boxShadow: "var(--nm-out-md)",
-                borderRadius: "var(--radius-lg)",
-                padding: "var(--sp-5)",
-              }}
-            >
-              <EmailOtpForm mode="sign-up" redirectTo="/vehicles" />
-            </div>
+            <EmailOtpForm mode="sign-up" redirectTo="/vehicles" />
           ) : (
             <SignUp
               routing="path"
@@ -116,44 +65,64 @@ export default function RegisterPage() {
               appearance={{
                 variables: {
                   colorPrimary: "#1e3a8a",
-                  colorBackground: "#edf1f6",
-                  colorText: "#2a3340",
+                  colorBackground: "#ffffff",
+                  colorText: "#1a2233",
                   colorTextSecondary: "#5a6878",
-                  colorInputBackground: "#edf1f6",
-                  colorInputText: "#2a3340",
-                  borderRadius: "14px",
-                  fontFamily: "Inter, sans-serif",
+                  colorInputBackground: "#ffffff",
+                  colorInputText: "#1a2233",
+                  borderRadius: "6px",
+                  fontFamily: "Inter, system-ui, sans-serif",
                 },
                 elements: {
                   rootBox: { width: "100%" },
-                  card: {
-                    background: "var(--surface)",
-                    boxShadow: "var(--nm-out-md)",
+                  cardBox: {
+                    boxShadow: "none",
                     border: "none",
-                    borderRadius: "var(--radius-lg)",
+                    width: "100%",
                   },
+                  card: {
+                    background: "transparent",
+                    border: "none",
+                    boxShadow: "none",
+                    width: "100%",
+                    padding: 0,
+                  },
+                  logoBox: { display: "none" },
+                  logoImage: { display: "none" },
+                  header: { display: "none" },
                   headerTitle: { display: "none" },
                   headerSubtitle: { display: "none" },
                   formButtonPrimary: {
-                    background: "var(--primary)",
-                    boxShadow: "var(--nm-out-sm)",
+                    background: "#1e3a8a",
+                    backgroundImage: "none",
                     border: "none",
+                    boxShadow: "none",
                     fontWeight: 600,
                     textTransform: "none",
+                    borderRadius: "6px",
+                    "&:hover": { background: "#172e70" },
+                    "&:focus": { boxShadow: "none" },
                   },
                   formFieldInput: {
-                    background: "var(--surface)",
-                    boxShadow: "var(--nm-in-sm)",
-                    border: "none",
-                    borderRadius: "var(--radius-md)",
+                    background: "#ffffff",
+                    border: "1px solid #c9d2dd",
+                    boxShadow: "none",
+                    borderRadius: "6px",
+                    "&:focus": {
+                      border: "1px solid #1e3a8a",
+                      boxShadow: "0 0 0 3px rgba(30, 58, 138, 0.12)",
+                    },
                   },
                   socialButtonsBlockButton: {
-                    background: "var(--surface)",
-                    boxShadow: "var(--nm-out-sm)",
-                    border: "none",
-                    borderRadius: "var(--radius-md)",
+                    background: "#ffffff",
+                    border: "1px solid #c9d2dd",
+                    boxShadow: "none",
+                    borderRadius: "6px",
                   },
                   footer: { background: "transparent" },
+                  footerActionText: { color: "#5a6878" },
+                  footerActionLink: { color: "#1e3a8a", fontWeight: 600 },
+                  footerPagesLink: { color: "#1e3a8a" },
                 },
               }}
             />
@@ -161,7 +130,7 @@ export default function RegisterPage() {
 
           <p style={{
             textAlign: "center",
-            marginTop: "var(--sp-4)",
+            marginTop: "var(--sp-5)",
             fontSize: "var(--t-sm)",
             color: "var(--text-muted)",
           }}>
@@ -170,7 +139,7 @@ export default function RegisterPage() {
               Iniciar sesión
             </Link>
           </p>
-        </div>
+        </Card>
       </div>
     </div>
   );

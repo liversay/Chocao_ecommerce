@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useApi } from "../../hooks/useApi";
-import GlassCard from "../../components/GlassCard";
+import Card from "../../components/Card";
 import DataTable from "../../components/DataTable";
 import StatusBadge from "../../components/StatusBadge";
 import PageHeader from "../../components/PageHeader";
@@ -28,22 +28,15 @@ export default function AdminBids() {
         subtitle="Todas las pujas realizadas en el sistema"
       />
 
-      <GlassCard>
+      <Card>
         {loading ? (
           <LoadingState />
         ) : bids.length === 0 ? (
           <EmptyState icon="◈" title="No hay pujas registradas" description="Las pujas aparecerán aquí cuando los usuarios participen en subastas." />
         ) : (
           <DataTable
+            dense
             columns={[
-              {
-                header: "Monto",
-                accessor: (b) => (
-                  <span style={{ color: "var(--accent)", fontWeight: 700, fontSize: "var(--t-md)" }}>
-                    ${(b.amount as number).toLocaleString()}
-                  </span>
-                ),
-              },
               {
                 header: "Vehículo",
                 accessor: (b) =>
@@ -65,6 +58,15 @@ export default function AdminBids() {
                 },
               },
               {
+                header: "Monto",
+                align: "right",
+                accessor: (b) => (
+                  <span className="mono" style={{ fontWeight: 600 }}>
+                    ${(b.amount as number).toLocaleString()}
+                  </span>
+                ),
+              },
+              {
                 header: "Estado",
                 accessor: (b) => <StatusBadge status={b.status} />,
               },
@@ -82,7 +84,7 @@ export default function AdminBids() {
             emptyMessage="No hay pujas registradas"
           />
         )}
-      </GlassCard>
+      </Card>
     </div>
   );
 }

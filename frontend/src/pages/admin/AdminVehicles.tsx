@@ -1,11 +1,10 @@
 import { useEffect, useState } from "react";
 import { useApi } from "../../hooks/useApi";
-import GlassCard from "../../components/GlassCard";
-import GlassButton from "../../components/GlassButton";
-import GlassInput from "../../components/GlassInput";
-import NeumorphicSelect from "../../components/NeumorphicSelect";
+import Card from "../../components/Card";
+import Button from "../../components/Button";
+import Input from "../../components/Input";
+import Select from "../../components/Select";
 import DataTable from "../../components/DataTable";
-import StatusBadge from "../../components/StatusBadge";
 import PageHeader from "../../components/PageHeader";
 import LoadingState from "../../components/LoadingState";
 import EmptyState from "../../components/EmptyState";
@@ -27,6 +26,29 @@ const CONDITIONS = [
   { value: "poor", label: "Malo" },
 ];
 
+const CONDITION_HELP: Record<string, string> = {
+  excellent: "Como nuevo: sin detalles estéticos ni mecánicos",
+  good: "Buen estado general: detalles menores de uso",
+  fair: "Uso notable: requiere mantenimiento próximamente",
+  poor: "Daños importantes: requiere reparación",
+};
+
+const BRANDS = [
+  "Acura", "Alfa Romeo", "Audi", "BMW", "BYD", "Changan", "Chery", "Chevrolet",
+  "Chrysler", "Citroën", "Dodge", "Fiat", "Ford", "Geely", "GMC", "Great Wall",
+  "Honda", "Hyundai", "Infiniti", "Isuzu", "JAC", "Jaguar", "Jeep", "Kia",
+  "Land Rover", "Lexus", "Mazda", "Mercedes-Benz", "MG", "Mini", "Mitsubishi",
+  "Nissan", "Peugeot", "Porsche", "RAM", "Renault", "Seat", "Škoda", "SsangYong",
+  "Subaru", "Suzuki", "Tesla", "Toyota", "Volkswagen", "Volvo", "Otra",
+];
+
+const COLORS = [
+  "Amarillo", "Azul", "Beige", "Blanco", "Dorado", "Gris", "Marrón", "Naranja",
+  "Negro", "Plata", "Rojo", "Verde", "Vinotinto", "Otro",
+];
+
+const CURRENT_YEAR = new Date().getFullYear();
+
 const EMPTY_FORM = {
   title: "", brand: "", model: "", year: "", color: "", mileage: "",
   condition: "good", description: "", basePrice: "",
@@ -43,6 +65,8 @@ export default function AdminVehicles() {
   const [images, setImages] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [initialStartDate, setInitialStartDate] = useState("");
 
   function loadVehicles() {
     setLoading(true);
@@ -59,12 +83,15 @@ export default function AdminVehicles() {
     setForm(EMPTY_FORM);
     setImages([]);
     setError("");
+    setErrors({});
+    setInitialStartDate("");
     setShowForm(true);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function openEdit(v: Vehicle) {
     setEditing(v);
+    const startDate = v.auctionStartDate ? v.auctionStartDate.slice(0, 10) : "";
     setForm({
       title: v.title, brand: v.brand, model: v.model,
       year: String(v.year), color: v.color || "",
@@ -73,23 +100,93 @@ export default function AdminVehicles() {
       description: v.description || "",
       basePrice: String(v.basePrice),
       status: v.status,
-      auctionStartDate: v.auctionStartDate ? v.auctionStartDate.slice(0, 10) : "",
+      auctionStartDate: startDate,
       auctionEndDate: v.auctionEndDate ? v.auctionEndDate.slice(0, 10) : "",
     });
     setImages(v.images || []);
     setError("");
+    setErrors({});
+    setInitialStartDate(startDate);
     setShowForm(true);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) {
-    setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
+    const { name, value } = e.target;
+    setForm((f) => ({ ...f, [name]: value }));
+    setErrors((prev) => {
+      if (!prev[name]) return prev;
+      const next = { ...prev };
+      delete next[name];
+      return next;
+    });
+  }
+
+  function validate(f: typeof form): Record<string, string> {
+    const errs: Record<string, string> = {};
+
+    if (!f.brand) errs.brand = "La marca es requerida";
+
+    if (!f.year) {
+      errs.year = "El año es requerido";
+    } else {
+      const y = parseInt(f.year, 10);
+      if (isNaN(y) || y < 1990 || y > CURRENT_YEAR) {
+        errs.year = `El año debe estar entre 1990 y ${CURRENT_YEAR}`;
+      }
+    }
+
+    if (f.mileage) {
+      const km = parseInt(f.mileage, 10);
+      if (!isNaN(km) && km < 0) {
+        errs.mileage = "El kilometraje no puede ser negativo";
+      }
+    }
+
+    if (!f.basePrice) {
+      errs.basePrice = "El precio base es requerido";
+    } else {
+      const price = parseFloat(f.basePrice);
+      if (isNaN(price) || price <= 0) {
+        errs.basePrice = "El precio base debe ser mayor que 0";
+      }
+    }
+
+    if (f.auctionStartDate && f.auctionStartDate !== initialStartDate) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const start = new Date(`${f.auctionStartDate}T00:00:00`);
+      if (start < today) {
+        errs.auctionStartDate = "El inicio no puede ser anterior a hoy";
+      }
+    }
+
+    if (f.auctionEndDate) {
+      if (!f.auctionStartDate) {
+        errs.auctionEndDate = "Define primero el inicio de la subasta";
+      } else {
+        const start = new Date(`${f.auctionStartDate}T00:00:00`);
+        const end = new Date(`${f.auctionEndDate}T00:00:00`);
+        const oneDay = 24 * 60 * 60 * 1000;
+        if (end.getTime() - start.getTime() < oneDay) {
+          errs.auctionEndDate = "El fin debe ser al menos un día después del inicio";
+        }
+      }
+    }
+
+    return errs;
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setSaving(true);
     setError("");
+    const validationErrors = validate(form);
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
+    setErrors({});
+    setSaving(true);
     const payload = {
       ...form,
       year: parseInt(form.year),
@@ -127,18 +224,30 @@ export default function AdminVehicles() {
     loadVehicles();
   }
 
+  const brandOptions = [
+    { value: "", label: "— Seleccionar —" },
+    ...(form.brand && !BRANDS.includes(form.brand) ? [{ value: form.brand, label: form.brand }] : []),
+    ...BRANDS.map((b) => ({ value: b, label: b })),
+  ];
+
+  const colorOptions = [
+    { value: "", label: "— Seleccionar —" },
+    ...(form.color && !COLORS.includes(form.color) ? [{ value: form.color, label: form.color }] : []),
+    ...COLORS.map((c) => ({ value: c, label: c })),
+  ];
+
   return (
     <div className="fade-in">
       <PageHeader
         eyebrow="Inventario"
         title="Gestión de vehículos"
         subtitle="Administra el catálogo completo de subastas"
-        actions={!showForm && <GlassButton variant="primary" onClick={openCreate}>+ Nuevo vehículo</GlassButton>}
+        actions={!showForm && <Button variant="primary" onClick={openCreate}>+ Nuevo vehículo</Button>}
       />
 
       {/* Form */}
       {showForm && (
-        <GlassCard padding="lg" style={{ marginBottom: "var(--sp-5)" }}>
+        <Card padding="lg" style={{ marginBottom: "var(--sp-5)" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--sp-5)" }}>
             <div>
               <h2 style={{ fontSize: "var(--t-lg)", color: "var(--text)" }}>
@@ -148,29 +257,17 @@ export default function AdminVehicles() {
                 Completa los campos requeridos para {editing ? "actualizar" : "registrar"} el vehículo
               </p>
             </div>
-            <button
-              onClick={() => setShowForm(false)}
-              style={{
-                width: 36, height: 36,
-                borderRadius: "50%",
-                background: "var(--surface)",
-                boxShadow: "var(--nm-out-sm)",
-                color: "var(--text-muted)",
-                fontSize: "1rem",
-                cursor: "pointer",
-                border: "none",
-              }}
-            >
+            <Button type="button" variant="ghost" size="sm" onClick={() => setShowForm(false)}>
               ✕
-            </button>
+            </Button>
           </div>
 
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} noValidate>
             {/* Section: Basic info */}
             <div style={{ marginBottom: "var(--sp-5)" }}>
               <h3 style={{
                 fontSize: "var(--t-xs)",
-                color: "var(--accent)",
+                color: "var(--primary)",
                 textTransform: "uppercase",
                 letterSpacing: "0.08em",
                 fontWeight: 700,
@@ -178,11 +275,29 @@ export default function AdminVehicles() {
               }}>
                 Información básica
               </h3>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "var(--sp-3)" }}>
-                <GlassInput label="Título *" name="title" value={form.title} onChange={handleChange} required />
-                <GlassInput label="Marca *" name="brand" value={form.brand} onChange={handleChange} required />
-                <GlassInput label="Modelo *" name="model" value={form.model} onChange={handleChange} required />
-                <GlassInput label="Año *" name="year" type="number" value={form.year} onChange={handleChange} required />
+              <div className="grid-2" style={{ gap: "var(--sp-3)" }}>
+                <Input label="Título *" name="title" value={form.title} onChange={handleChange} required />
+                <Select
+                  label="Marca *"
+                  name="brand"
+                  value={form.brand}
+                  onChange={handleChange}
+                  options={brandOptions}
+                  error={errors.brand}
+                  required
+                />
+                <Input label="Modelo *" name="model" value={form.model} onChange={handleChange} required />
+                <Input
+                  label="Año *"
+                  name="year"
+                  type="number"
+                  min={1990}
+                  max={CURRENT_YEAR}
+                  value={form.year}
+                  onChange={handleChange}
+                  error={errors.year}
+                  required
+                />
               </div>
             </div>
 
@@ -190,7 +305,7 @@ export default function AdminVehicles() {
             <div style={{ marginBottom: "var(--sp-5)" }}>
               <h3 style={{
                 fontSize: "var(--t-xs)",
-                color: "var(--accent)",
+                color: "var(--primary)",
                 textTransform: "uppercase",
                 letterSpacing: "0.08em",
                 fontWeight: 700,
@@ -198,16 +313,38 @@ export default function AdminVehicles() {
               }}>
                 Especificaciones
               </h3>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "var(--sp-3)" }}>
-                <GlassInput label="Color" name="color" value={form.color} onChange={handleChange} />
-                <GlassInput label="Kilometraje" name="mileage" type="number" value={form.mileage} onChange={handleChange} />
-                <NeumorphicSelect
-                  label="Condición"
-                  name="condition"
-                  value={form.condition}
+              <div className="grid-2" style={{ gap: "var(--sp-3)" }}>
+                <Select
+                  label="Color"
+                  name="color"
+                  value={form.color}
                   onChange={handleChange}
-                  options={CONDITIONS}
+                  options={colorOptions}
+                  error={errors.color}
                 />
+                <Input
+                  label="Kilometraje"
+                  name="mileage"
+                  type="number"
+                  min={0}
+                  value={form.mileage}
+                  onChange={handleChange}
+                  error={errors.mileage}
+                />
+                <div>
+                  <Select
+                    label="Condición"
+                    name="condition"
+                    value={form.condition}
+                    onChange={handleChange}
+                    options={CONDITIONS}
+                  />
+                  {CONDITION_HELP[form.condition] && (
+                    <p className="text-muted" style={{ fontSize: "var(--t-xs)", marginTop: 4 }}>
+                      {CONDITION_HELP[form.condition]}
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -215,7 +352,7 @@ export default function AdminVehicles() {
             <div style={{ marginBottom: "var(--sp-5)" }}>
               <h3 style={{
                 fontSize: "var(--t-xs)",
-                color: "var(--accent)",
+                color: "var(--primary)",
                 textTransform: "uppercase",
                 letterSpacing: "0.08em",
                 fontWeight: 700,
@@ -223,17 +360,39 @@ export default function AdminVehicles() {
               }}>
                 Subasta
               </h3>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "var(--sp-3)" }}>
-                <GlassInput label="Precio base (USD) *" name="basePrice" type="number" value={form.basePrice} onChange={handleChange} required />
-                <NeumorphicSelect
+              <div className="grid-2" style={{ gap: "var(--sp-3)" }}>
+                <Input
+                  label="Precio base (USD) *"
+                  name="basePrice"
+                  type="number"
+                  value={form.basePrice}
+                  onChange={handleChange}
+                  error={errors.basePrice}
+                  required
+                />
+                <Select
                   label="Estado"
                   name="status"
                   value={form.status}
                   onChange={handleChange}
                   options={STATUSES}
                 />
-                <GlassInput label="Inicio subasta" name="auctionStartDate" type="date" value={form.auctionStartDate} onChange={handleChange} />
-                <GlassInput label="Fin subasta" name="auctionEndDate" type="date" value={form.auctionEndDate} onChange={handleChange} />
+                <Input
+                  label="Inicio subasta"
+                  name="auctionStartDate"
+                  type="date"
+                  value={form.auctionStartDate}
+                  onChange={handleChange}
+                  error={errors.auctionStartDate}
+                />
+                <Input
+                  label="Fin subasta"
+                  name="auctionEndDate"
+                  type="date"
+                  value={form.auctionEndDate}
+                  onChange={handleChange}
+                  error={errors.auctionEndDate}
+                />
               </div>
             </div>
 
@@ -241,7 +400,7 @@ export default function AdminVehicles() {
             <div style={{ marginBottom: "var(--sp-5)" }}>
               <h3 style={{
                 fontSize: "var(--t-xs)",
-                color: "var(--accent)",
+                color: "var(--primary)",
                 textTransform: "uppercase",
                 letterSpacing: "0.08em",
                 fontWeight: 700,
@@ -251,32 +410,15 @@ export default function AdminVehicles() {
               </h3>
               <div style={{ display: "flex", flexDirection: "column", gap: "var(--sp-4)" }}>
                 <ImageDropzone value={images} onChange={setImages} />
-                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  <label style={{
-                    fontSize: "var(--t-xs)",
-                    fontWeight: 600,
-                    color: "var(--text-muted)",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.05em",
-                  }}>
-                    Descripción
-                  </label>
+                <div className="field">
+                  <label className="field-label">Descripción</label>
                   <textarea
                     name="description"
                     value={form.description}
                     onChange={handleChange}
                     rows={4}
-                    style={{
-                      background: "var(--surface)",
-                      border: "none",
-                      color: "var(--text)",
-                      fontSize: "var(--t-base)",
-                      padding: "13px 16px",
-                      borderRadius: "var(--radius-md)",
-                      boxShadow: "var(--nm-in-sm)",
-                      resize: "vertical",
-                      fontFamily: "inherit",
-                    }}
+                    className="input"
+                    style={{ resize: "vertical", fontFamily: "inherit" }}
                   />
                 </div>
               </div>
@@ -297,19 +439,19 @@ export default function AdminVehicles() {
             )}
 
             <div style={{ display: "flex", gap: "var(--sp-3)", justifyContent: "flex-end" }}>
-              <GlassButton type="button" variant="ghost" onClick={() => setShowForm(false)}>
+              <Button type="button" variant="ghost" onClick={() => setShowForm(false)}>
                 Cancelar
-              </GlassButton>
-              <GlassButton type="submit" variant="primary" disabled={saving}>
+              </Button>
+              <Button type="submit" variant="primary" disabled={saving}>
                 {saving ? "Guardando..." : editing ? "Actualizar vehículo" : "Crear vehículo"}
-              </GlassButton>
+              </Button>
             </div>
           </form>
-        </GlassCard>
+        </Card>
       )}
 
       {/* Table */}
-      <GlassCard>
+      <Card>
         {loading ? (
           <LoadingState />
         ) : vehicles.length === 0 ? (
@@ -317,16 +459,36 @@ export default function AdminVehicles() {
             icon="🚗"
             title="No hay vehículos registrados"
             description="Comienza agregando tu primer vehículo al catálogo."
-            action={<GlassButton variant="primary" onClick={openCreate}>+ Agregar vehículo</GlassButton>}
+            action={<Button variant="primary" onClick={openCreate}>+ Agregar vehículo</Button>}
           />
         ) : (
           <DataTable
+            dense
             columns={[
+              {
+                header: "",
+                width: "56px",
+                accessor: (v) => (
+                  v.images && v.images.length > 0 ? (
+                    <img
+                      src={v.images[0]}
+                      alt={v.title}
+                      style={{ width: 40, height: 40, borderRadius: "var(--radius-sm)", objectFit: "cover", border: "1px solid var(--border)" }}
+                    />
+                  ) : (
+                    <div style={{ width: 40, height: 40, borderRadius: "var(--radius-sm)", background: "var(--bg-alt)", border: "1px solid var(--border)" }} />
+                  )
+                ),
+              },
+              {
+                header: "ID",
+                accessor: (v) => <span className="mono" style={{ color: "var(--text-soft)" }}>{v._id.slice(-6)}</span>,
+              },
               {
                 header: "Vehículo",
                 accessor: (v) => (
                   <div>
-                    <p style={{ fontWeight: 700, color: "var(--text)", fontSize: "var(--t-sm)" }}>{v.title}</p>
+                    <p style={{ fontWeight: 600, color: "var(--text)" }}>{v.title}</p>
                     <p style={{ fontSize: "var(--t-xs)", color: "var(--text-soft)" }}>
                       {v.brand} · {v.model} · {v.year}
                     </p>
@@ -336,51 +498,29 @@ export default function AdminVehicles() {
               {
                 header: "Estado",
                 accessor: (v) => (
-                  <select
+                  <Select
                     value={v.status}
                     onChange={(e) => handleStatus(v._id, e.target.value)}
-                    style={{
-                      appearance: "none",
-                      WebkitAppearance: "none",
-                      background: "var(--surface)",
-                      boxShadow: "var(--nm-in-sm)",
-                      border: "none",
-                      borderRadius: "var(--radius-pill)",
-                      padding: "5px 28px 5px 14px",
-                      color: "var(--text)",
-                      fontSize: "var(--t-xs)",
-                      fontWeight: 600,
-                      cursor: "pointer",
-                      backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%235a6878' d='M5 6L0 0h10z'/%3E%3C/svg%3E\")",
-                      backgroundRepeat: "no-repeat",
-                      backgroundPosition: "right 12px center",
-                      backgroundSize: "8px",
-                    }}
-                  >
-                    {STATUSES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
-                  </select>
+                    options={STATUSES}
+                  />
                 ),
               },
               {
-                header: "Precio actual",
+                header: "Precio",
                 align: "right",
                 accessor: (v) => (
-                  <span style={{ color: "var(--accent)", fontWeight: 700 }}>
+                  <span className="mono" style={{ fontWeight: 600 }}>
                     ${v.currentPrice.toLocaleString()}
                   </span>
                 ),
-              },
-              {
-                header: "Estado base",
-                accessor: (v) => <StatusBadge status={v.status} />,
               },
               {
                 header: "",
                 align: "right",
                 accessor: (v) => (
                   <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
-                    <GlassButton size="sm" variant="ghost" onClick={() => openEdit(v)}>Editar</GlassButton>
-                    <GlassButton size="sm" variant="danger" onClick={() => handleDelete(v._id)}>Eliminar</GlassButton>
+                    <Button size="sm" variant="ghost" onClick={() => openEdit(v)}>Editar</Button>
+                    <Button size="sm" variant="ghost" onClick={() => handleDelete(v._id)} style={{ color: "var(--danger)" }}>Eliminar</Button>
                   </div>
                 ),
               },
@@ -389,7 +529,7 @@ export default function AdminVehicles() {
             emptyMessage="No hay vehículos"
           />
         )}
-      </GlassCard>
+      </Card>
     </div>
   );
 }

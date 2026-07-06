@@ -16,6 +16,9 @@ import VehicleDetailPage from "./pages/VehicleDetailPage";
 import MyBidsPage from "./pages/MyBidsPage";
 import MyPurchasesPage from "./pages/MyPurchasesPage";
 import CheckoutResultPage from "./pages/CheckoutResultPage";
+import TermsPage from "./pages/TermsPage";
+import PrivacyPage from "./pages/PrivacyPage";
+import ContactPage from "./pages/ContactPage";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminVehicles from "./pages/admin/AdminVehicles";
 import AdminBids from "./pages/admin/AdminBids";
@@ -51,6 +54,9 @@ export default function App() {
           <Route path="/register/*" element={<RegisterPage />} />
           <Route path="/vehicles" element={<CatalogPage />} />
           <Route path="/vehicles/:id" element={<VehicleDetailPage />} />
+          <Route path="/terms" element={<TermsPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
+          <Route path="/contact" element={<ContactPage />} />
           <Route
             path="/my-bids"
             element={

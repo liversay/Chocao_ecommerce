@@ -1,6 +1,6 @@
 import { useState } from "react";
-import GlassInput from "./GlassInput";
-import GlassButton from "./GlassButton";
+import Input from "./Input";
+import Button from "./Button";
 
 interface Props {
   currentPrice: number;
@@ -15,9 +15,9 @@ export default function BidForm({ currentPrice, onSubmit, disabled }: Props) {
 
   const min = currentPrice + 1;
   const suggestions = [
-    Math.round(currentPrice * 1.05),
-    Math.round(currentPrice * 1.10),
-    Math.round(currentPrice * 1.20),
+    { label: "+5%", value: Math.round(currentPrice * 1.05) },
+    { label: "+10%", value: Math.round(currentPrice * 1.10) },
+    { label: "+20%", value: Math.round(currentPrice * 1.20) },
   ];
 
   async function handleSubmit(e: React.FormEvent) {
@@ -42,7 +42,7 @@ export default function BidForm({ currentPrice, onSubmit, disabled }: Props) {
 
   return (
     <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "var(--sp-4)" }}>
-      <GlassInput
+      <Input
         label="Tu puja (USD)"
         type="number"
         min={min}
@@ -55,38 +55,25 @@ export default function BidForm({ currentPrice, onSubmit, disabled }: Props) {
         disabled={disabled || loading}
       />
 
-      <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: "8px" }}>
         {suggestions.map((s) => (
-          <button
-            key={s}
+          <Button
+            key={s.label}
             type="button"
-            onClick={() => setAmount(String(s))}
-            style={{
-              background: "var(--surface)",
-              boxShadow: "var(--nm-flat)",
-              borderRadius: "var(--radius-pill)",
-              padding: "5px 13px",
-              fontSize: "var(--t-xs)",
-              color: "var(--text-muted)",
-              fontWeight: 600,
-              cursor: "pointer",
-              transition: "box-shadow 0.15s",
-            }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.boxShadow = "var(--nm-out-sm)";
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.boxShadow = "var(--nm-flat)";
-            }}
+            variant="secondary"
+            size="sm"
+            onClick={() => setAmount(String(s.value))}
+            disabled={disabled || loading}
+            style={{ flex: 1 }}
           >
-            +${s.toLocaleString()}
-          </button>
+            {s.label}
+          </Button>
         ))}
       </div>
 
-      <GlassButton type="submit" variant="accent" disabled={disabled || loading} fullWidth size="lg">
-        {loading ? "Enviando..." : "Realizar puja"}
-      </GlassButton>
+      <Button type="submit" variant="primary" fullWidth size="lg" disabled={disabled || loading}>
+        {loading ? "Enviando..." : "Pujar"}
+      </Button>
     </form>
   );
 }

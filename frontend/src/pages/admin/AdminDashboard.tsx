@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useApi } from "../../hooks/useApi";
-import AdminStatCard from "../../components/AdminStatCard";
-import GlassCard from "../../components/GlassCard";
-import GlassButton from "../../components/GlassButton";
+import Card from "../../components/Card";
+import Button from "../../components/Button";
 import DataTable from "../../components/DataTable";
 import StatusBadge from "../../components/StatusBadge";
 import PageHeader from "../../components/PageHeader";
@@ -54,74 +53,74 @@ export default function AdminDashboard() {
         eyebrow="Panel administrativo"
         title="Dashboard"
         subtitle="Resumen general del sistema y métricas en tiempo real"
-        actions={
-          <Link to="/admin/vehicles">
-            <GlassButton variant="primary">+ Nuevo vehículo</GlassButton>
-          </Link>
-        }
       />
 
-      {/* Stats grid */}
       {summary && (
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-          gap: "var(--sp-4)",
-          marginBottom: "var(--sp-6)",
-        }}>
-          <AdminStatCard label="Vehículos totales" value={summary.totalVehicles} icon="▦" accent="primary" />
-          <AdminStatCard label="Subastas activas" value={summary.activeAuctions} icon="◉" accent="success" />
-          <AdminStatCard label="Adjudicados" value={summary.awardedVehicles} icon="★" accent="accent" />
-          <AdminStatCard label="Total pujas" value={summary.totalBids} icon="◈" accent="primary" />
-          <AdminStatCard label="Usuarios" value={summary.totalUsers} icon="◐" accent="primary" />
-          <AdminStatCard
-            label="Recaudado"
-            value={`$${summary.totalRevenue.toLocaleString()}`}
-            icon="$"
-            accent="accent"
-          />
+        <div className="kpi-row" style={{ marginBottom: "var(--sp-6)" }}>
+          <div className="kpi">
+            <p className="kpi-value">{summary.totalVehicles}</p>
+            <p className="kpi-label">Vehículos totales</p>
+          </div>
+          <div className="kpi">
+            <p className="kpi-value">{summary.activeAuctions}</p>
+            <p className="kpi-label">Subastas activas</p>
+          </div>
+          <div className="kpi">
+            <p className="kpi-value">{summary.awardedVehicles}</p>
+            <p className="kpi-label">Adjudicados</p>
+          </div>
+          <div className="kpi">
+            <p className="kpi-value">{summary.totalBids}</p>
+            <p className="kpi-label">Total pujas</p>
+          </div>
+          <div className="kpi">
+            <p className="kpi-value">{summary.totalUsers}</p>
+            <p className="kpi-label">Usuarios</p>
+          </div>
+          <div className="kpi">
+            <p className="kpi-value mono">${summary.totalRevenue.toLocaleString()}</p>
+            <p className="kpi-label">Recaudado</p>
+          </div>
         </div>
       )}
 
       {/* Two-column tables */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--sp-4)" }}>
-        <GlassCard>
+      <div className="grid-2" style={{ gap: "var(--sp-4)" }}>
+        <Card>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--sp-4)" }}>
             <h2 style={{ fontSize: "var(--t-md)", color: "var(--text)" }}>Vehículos recientes</h2>
             <Link to="/admin/vehicles">
-              <GlassButton variant="ghost" size="sm">Ver todos →</GlassButton>
+              <Button variant="ghost" size="sm">Ver todos →</Button>
             </Link>
           </div>
           <DataTable
+            dense
             columns={[
               { header: "Título", accessor: (v) => (
                 <span style={{ fontWeight: 600, color: "var(--text)" }}>{v.title}</span>
               ) },
               { header: "Estado", accessor: (v) => <StatusBadge status={v.status} /> },
               { header: "Precio", align: "right", accessor: (v) => (
-                <span style={{ color: "var(--accent)", fontWeight: 700 }}>
-                  ${v.currentPrice.toLocaleString()}
-                </span>
+                <span className="mono">${v.currentPrice.toLocaleString()}</span>
               ) },
             ]}
             data={recentVehicles}
             emptyMessage="Sin vehículos"
           />
-        </GlassCard>
+        </Card>
 
-        <GlassCard>
+        <Card>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--sp-4)" }}>
             <h2 style={{ fontSize: "var(--t-md)", color: "var(--text)" }}>Top pujas</h2>
             <Link to="/admin/bids">
-              <GlassButton variant="ghost" size="sm">Ver todas →</GlassButton>
+              <Button variant="ghost" size="sm">Ver todas →</Button>
             </Link>
           </div>
           <DataTable
+            dense
             columns={[
               { header: "Monto", accessor: (b) => (
-                <span style={{ color: "var(--accent)", fontWeight: 700 }}>
-                  ${b.amount.toLocaleString()}
-                </span>
+                <span className="mono">${b.amount.toLocaleString()}</span>
               ) },
               { header: "Vehículo", accessor: (b) => b.vehicleId?.title || "—" },
               { header: "Usuario", accessor: (b) => (
@@ -133,7 +132,7 @@ export default function AdminDashboard() {
             data={topBids}
             emptyMessage="Sin pujas"
           />
-        </GlassCard>
+        </Card>
       </div>
     </div>
   );

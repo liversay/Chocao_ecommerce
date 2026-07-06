@@ -138,15 +138,14 @@ export default function ImageDropzone({ value, onChange, maxImages = 6 }: Props)
         onDrop={handleDrop}
         onClick={() => cloudinaryReady && inputRef.current?.click()}
         style={{
-          background: "var(--surface)",
-          boxShadow: dragOver ? "var(--nm-out-md)" : "var(--nm-in-sm)",
+          background: "var(--bg-alt)",
           borderRadius: "var(--radius-md)",
           padding: "var(--sp-5) var(--sp-4)",
           textAlign: "center",
           cursor: cloudinaryReady ? "pointer" : "not-allowed",
           opacity: cloudinaryReady ? 1 : 0.55,
-          transition: "box-shadow 0.2s",
-          border: dragOver ? "2px dashed var(--primary)" : "2px dashed transparent",
+          transition: "border-color 0.2s, background 0.2s",
+          border: dragOver ? "2px dashed var(--primary)" : "2px dashed var(--border-strong)",
         }}
       >
         <input
@@ -162,7 +161,7 @@ export default function ImageDropzone({ value, onChange, maxImages = 6 }: Props)
           margin: "0 auto var(--sp-3)",
           borderRadius: "50%",
           background: "var(--surface)",
-          boxShadow: "var(--nm-out-sm)",
+          border: "1px solid var(--border-strong)",
           display: "flex", alignItems: "center", justifyContent: "center",
           fontSize: "1.4rem",
           color: "var(--primary)",
@@ -184,7 +183,7 @@ export default function ImageDropzone({ value, onChange, maxImages = 6 }: Props)
             <div key={u.id} style={{
               padding: "8px 12px",
               background: "var(--surface)",
-              boxShadow: "var(--nm-in-sm)",
+              border: "1px solid var(--border)",
               borderRadius: "var(--radius-sm)",
               display: "flex",
               flexDirection: "column",
@@ -194,9 +193,9 @@ export default function ImageDropzone({ value, onChange, maxImages = 6 }: Props)
                 <span style={{ color: "var(--text-muted)", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "70%" }}>
                   ⬆ {u.name}
                 </span>
-                <span style={{ color: "var(--primary)", fontWeight: 600 }}>{u.progress}%</span>
+                <span className="mono" style={{ color: "var(--primary)", fontWeight: 600 }}>{u.progress}%</span>
               </div>
-              <div style={{ height: 4, background: "var(--bg-deep)", borderRadius: 999, overflow: "hidden" }}>
+              <div style={{ height: 4, background: "var(--bg-alt)", borderRadius: 999, overflow: "hidden" }}>
                 <div style={{
                   height: "100%",
                   width: `${u.progress}%`,
@@ -236,8 +235,8 @@ export default function ImageDropzone({ value, onChange, maxImages = 6 }: Props)
                 aspectRatio: "1",
                 borderRadius: "var(--radius-md)",
                 overflow: "hidden",
-                background: "var(--bg-deep)",
-                boxShadow: i === 0 ? "var(--nm-out-md)" : "var(--nm-out-sm)",
+                background: "var(--bg-alt)",
+                border: i === 0 ? "1px solid var(--primary)" : "1px solid var(--border)",
               }}
             >
               <img src={url} alt={`img-${i}`} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
