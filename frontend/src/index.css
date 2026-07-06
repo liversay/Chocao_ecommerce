@@ -358,19 +358,3 @@ h1, h2, h3, h4 {
   .steps-row { grid-template-columns: 1fr; }
   .stat-strip-item + .stat-strip-item { border-left: none; }
 }
-
-/* ================= COMPAT (eliminar en Task 11) ================= */
-:root {
-  --bg-deep: #f6f8fa;
-  --surface-2: #f6f8fa;
-  --primary-600: #1d4ed8;
-  --primary-500: #2563eb;
-  --nm-light: rgba(255, 255, 255, 0);
-  --nm-dark: rgba(16, 24, 40, 0.08);
-  --nm-out-sm: var(--shadow-sm);
-  --nm-out-md: var(--shadow-sm);
-  --nm-out-lg: var(--shadow-md);
-  --nm-in-sm: inset 0 0 0 1px var(--border);
-  --nm-in-md: inset 0 0 0 1px var(--border-strong);
-  --nm-flat: var(--shadow-sm);
-}

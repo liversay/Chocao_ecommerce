@@ -10,7 +10,7 @@ export default function Logo({ size = 40 }: Props) {
         height: size,
         borderRadius: size * 0.3,
         background: "var(--primary)",
-        boxShadow: "var(--nm-out-sm)",
+        boxShadow: "var(--shadow-sm)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
