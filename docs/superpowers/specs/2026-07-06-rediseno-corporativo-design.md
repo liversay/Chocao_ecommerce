@@ -96,8 +96,8 @@ Mismo mapa semántico de colores en ambos temas; forma distinta:
   (número 28px + label 12px + delta). Tablas compactas de actividad reciente.
 - **Vehículos**: tabla densa (filas 44px, thumbnail 40px, ID monospace gris,
   select de estado inline compacto, acciones como iconos al hover). Form
-  crear/editar como modal/panel con inputs de borde simple; dropzone con borde
-  punteado gris.
+  crear/editar mantiene el patrón actual de panel inline (toggle `showForm`),
+  restilizado con inputs de borde simple; dropzone con borde punteado gris.
 - **Pujas**: tabla densa, monto en monospace, filtrable.
 - **Reportes**: distribución por estado como barras horizontales finas con
   porcentaje; métricas en la retícula de KPIs.
