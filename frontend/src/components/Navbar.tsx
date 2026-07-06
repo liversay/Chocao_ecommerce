@@ -44,7 +44,10 @@ export default function Navbar() {
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          height: 72,
+          flexWrap: "wrap",
+          gap: "var(--sp-2)",
+          minHeight: 72,
+          padding: "12px var(--sp-5)",
         }}
       >
         {/* Logo */}
@@ -62,7 +65,7 @@ export default function Navbar() {
             >
               Chocao
             </p>
-            <p className="eyebrow" style={{ marginTop: 2 }}>
+            <p className="eyebrow navbar-tagline" style={{ marginTop: 2 }}>
               Subastas Gov · Panamá
             </p>
           </div>

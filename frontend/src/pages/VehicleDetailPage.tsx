@@ -11,6 +11,7 @@ import StatusBadge from "../components/StatusBadge";
 import LoadingState from "../components/LoadingState";
 import EmptyState from "../components/EmptyState";
 import Countdown from "../components/Countdown";
+import { CONDITION_LABELS } from "../components/VehicleCard";
 import type { Vehicle, Bid } from "../types";
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
@@ -69,7 +70,7 @@ export default function VehicleDetailPage() {
     { label: "Año", value: vehicle.year },
     { label: "Color", value: vehicle.color || "—" },
     { label: "Kilometraje", value: vehicle.mileage ? `${vehicle.mileage.toLocaleString()} km` : "—" },
-    { label: "Condición", value: vehicle.condition || "—" },
+    { label: "Condición", value: (vehicle.condition && CONDITION_LABELS[vehicle.condition]) || vehicle.condition || "—" },
   ];
 
   return (

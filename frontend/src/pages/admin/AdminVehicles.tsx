@@ -165,7 +165,7 @@ export default function AdminVehicles() {
               }}>
                 Información básica
               </h3>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "var(--sp-3)" }}>
+              <div className="grid-2" style={{ gap: "var(--sp-3)" }}>
                 <Input label="Título *" name="title" value={form.title} onChange={handleChange} required />
                 <Input label="Marca *" name="brand" value={form.brand} onChange={handleChange} required />
                 <Input label="Modelo *" name="model" value={form.model} onChange={handleChange} required />
@@ -185,7 +185,7 @@ export default function AdminVehicles() {
               }}>
                 Especificaciones
               </h3>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "var(--sp-3)" }}>
+              <div className="grid-2" style={{ gap: "var(--sp-3)" }}>
                 <Input label="Color" name="color" value={form.color} onChange={handleChange} />
                 <Input label="Kilometraje" name="mileage" type="number" value={form.mileage} onChange={handleChange} />
                 <Select
@@ -210,7 +210,7 @@ export default function AdminVehicles() {
               }}>
                 Subasta
               </h3>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "var(--sp-3)" }}>
+              <div className="grid-2" style={{ gap: "var(--sp-3)" }}>
                 <Input label="Precio base (USD) *" name="basePrice" type="number" value={form.basePrice} onChange={handleChange} required />
                 <Select
                   label="Estado"

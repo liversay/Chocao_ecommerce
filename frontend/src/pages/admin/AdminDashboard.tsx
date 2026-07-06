@@ -90,7 +90,7 @@ export default function AdminDashboard() {
       )}
 
       {/* Two-column tables */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--sp-4)" }}>
+      <div className="grid-2" style={{ gap: "var(--sp-4)" }}>
         <Card>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--sp-4)" }}>
             <h2 style={{ fontSize: "var(--t-md)", color: "var(--text)" }}>Vehículos recientes</h2>

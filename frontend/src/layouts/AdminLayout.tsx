@@ -51,7 +51,7 @@ export default function AdminLayout() {
           </div>
         </Link>
 
-        <nav style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+        <nav className="admin-nav">
           {navGroups.map((group) => (
             <div key={group.label}>
               <p className="admin-nav-label">{group.label.toUpperCase()}</p>

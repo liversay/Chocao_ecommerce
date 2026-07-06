@@ -10,7 +10,7 @@ interface Props {
 
 const CAR_PLACEHOLDER = "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=600&q=80";
 
-const CONDITION_LABELS: Record<string, string> = {
+export const CONDITION_LABELS: Record<string, string> = {
   excellent: "Excelente",
   good: "Bueno",
   fair: "Regular",
@@ -51,7 +51,7 @@ export default function VehicleCard({ vehicle }: Props) {
             {vehicle.title}
           </h3>
           <p className="text-muted" style={{ fontSize: "var(--t-sm)", marginBottom: "var(--sp-4)" }}>
-            {vehicle.mileage.toLocaleString()} km · {CONDITION_LABELS[vehicle.condition] || vehicle.condition}
+            {vehicle.mileage ? `${vehicle.mileage.toLocaleString()} km` : "—"} · {CONDITION_LABELS[vehicle.condition] || vehicle.condition}
           </p>
 
           <div

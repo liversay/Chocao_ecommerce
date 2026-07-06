@@ -45,15 +45,7 @@ export default function Landing() {
     <div className="fade-in">
       {/* HERO */}
       <section className="section">
-        <div
-          className="container"
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1.1fr 0.9fr",
-            gap: "var(--sp-7)",
-            alignItems: "center",
-          }}
-        >
+        <div className="container hero-grid">
           <div>
             <p className="eyebrow" style={{ marginBottom: "var(--sp-4)" }}>
               República de Panamá · Subasta pública
