@@ -224,9 +224,11 @@ export default function AdminVehicles() {
     loadVehicles();
   }
 
-  const brandOptions = BRANDS.includes(form.brand) || !form.brand
-    ? BRANDS.map((b) => ({ value: b, label: b }))
-    : [{ value: form.brand, label: form.brand }, ...BRANDS.map((b) => ({ value: b, label: b }))];
+  const brandOptions = [
+    { value: "", label: "— Seleccionar —" },
+    ...(form.brand && !BRANDS.includes(form.brand) ? [{ value: form.brand, label: form.brand }] : []),
+    ...BRANDS.map((b) => ({ value: b, label: b })),
+  ];
 
   const colorOptions = [
     { value: "", label: "— Seleccionar —" },
