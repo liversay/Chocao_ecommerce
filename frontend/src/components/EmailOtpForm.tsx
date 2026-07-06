@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import { useClerk } from "@clerk/react";
 import { useNavigate } from "react-router-dom";
-import GlassButton from "./GlassButton";
-import GlassInput from "./GlassInput";
+import Button from "./Button";
+import Input from "./Input";
 
 interface Props {
   mode: "sign-in" | "sign-up";
@@ -198,16 +198,16 @@ export default function EmailOtpForm({ mode, redirectTo = "/vehicles" }: Props) 
 
   if (step === "email") {
     return (
-      <form onSubmit={handleSendCode} style={{ display: "flex", flexDirection: "column", gap: "var(--sp-3)" }}>
+      <form onSubmit={handleSendCode} style={{ display: "flex", flexDirection: "column", gap: "var(--sp-4)" }}>
         {mode === "sign-up" && (
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--sp-2)" }}>
-            <GlassInput
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--sp-3)" }}>
+            <Input
               label="Nombre"
               value={firstName}
               onChange={(e) => setFirstName(e.target.value)}
               placeholder="Juan"
             />
-            <GlassInput
+            <Input
               label="Apellido"
               value={lastName}
               onChange={(e) => setLastName(e.target.value)}
@@ -216,7 +216,7 @@ export default function EmailOtpForm({ mode, redirectTo = "/vehicles" }: Props) 
           </div>
         )}
 
-        <GlassInput
+        <Input
           label="Correo electrónico"
           type="email"
           value={email}
@@ -227,14 +227,16 @@ export default function EmailOtpForm({ mode, redirectTo = "/vehicles" }: Props) 
         />
 
         {error && (
-          <div style={{
-            padding: "10px 14px",
-            background: "var(--danger-soft)",
-            color: "var(--danger)",
-            borderRadius: "var(--radius-md)",
-            fontSize: "var(--t-xs)",
-            fontWeight: 500,
-          }}>
+          <div
+            style={{
+              padding: "10px 14px",
+              background: "var(--danger-soft)",
+              color: "var(--danger)",
+              borderRadius: "var(--radius-sm)",
+              fontSize: "var(--t-xs)",
+              fontWeight: 500,
+            }}
+          >
             {error}
           </div>
         )}
@@ -242,9 +244,9 @@ export default function EmailOtpForm({ mode, redirectTo = "/vehicles" }: Props) 
         {/* Required for Clerk's bot protection (CAPTCHA) */}
         <div id="clerk-captcha" />
 
-        <GlassButton type="submit" variant="primary" fullWidth size="lg" disabled={loading || !email}>
+        <Button type="submit" variant="primary" fullWidth disabled={loading || !email}>
           {loading ? "Enviando código..." : "Enviar código por email"}
-        </GlassButton>
+        </Button>
 
         <p style={{ fontSize: "var(--t-xs)", color: "var(--text-soft)", textAlign: "center", lineHeight: 1.5 }}>
           Te enviaremos un código de 6 dígitos para verificar tu identidad.
@@ -254,14 +256,8 @@ export default function EmailOtpForm({ mode, redirectTo = "/vehicles" }: Props) 
   }
 
   return (
-    <form onSubmit={handleVerifyCode} style={{ display: "flex", flexDirection: "column", gap: "var(--sp-3)" }}>
-      <div style={{
-        padding: "var(--sp-3)",
-        background: "var(--surface)",
-        boxShadow: "var(--nm-in-sm)",
-        borderRadius: "var(--radius-md)",
-        textAlign: "center",
-      }}>
+    <form onSubmit={handleVerifyCode} style={{ display: "flex", flexDirection: "column", gap: "var(--sp-4)" }}>
+      <div style={{ textAlign: "center" }}>
         <p style={{ fontSize: "var(--t-xs)", color: "var(--text-soft)", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>
           Código enviado a
         </p>
@@ -270,75 +266,62 @@ export default function EmailOtpForm({ mode, redirectTo = "/vehicles" }: Props) 
         </p>
       </div>
 
-      <label style={{
-        fontSize: "var(--t-xs)",
-        fontWeight: 600,
-        color: "var(--text-muted)",
-        textTransform: "uppercase",
-        letterSpacing: "0.05em",
-      }}>
-        Código de verificación
-      </label>
+      <div className="field">
+        <label className="field-label" style={{ textAlign: "center" }}>
+          Código de verificación
+        </label>
 
-      <div style={{ display: "flex", gap: "8px", justifyContent: "space-between" }} onPaste={handlePaste}>
-        {code.map((digit, i) => (
-          <input
-            key={i}
-            ref={(el) => { codeRefs.current[i] = el; }}
-            type="text"
-            inputMode="numeric"
-            maxLength={6}
-            value={digit}
-            onChange={(e) => handleCodeChange(i, e.target.value)}
-            onKeyDown={(e) => handleCodeKeyDown(i, e)}
-            onFocus={(e) => e.target.select()}
-            style={{
-              width: "100%",
-              maxWidth: 52,
-              aspectRatio: "1",
-              textAlign: "center",
-              fontSize: "var(--t-xl)",
-              fontWeight: 700,
-              color: "var(--text)",
-              background: "var(--surface)",
-              border: "none",
-              borderRadius: "var(--radius-md)",
-              boxShadow: digit ? "var(--nm-out-sm)" : "var(--nm-in-sm)",
-              transition: "box-shadow 0.15s",
-              fontFamily: "ui-monospace, monospace",
-            }}
-          />
-        ))}
+        <div style={{ display: "flex", gap: "8px", justifyContent: "center" }} onPaste={handlePaste}>
+          {code.map((digit, i) => (
+            <input
+              key={i}
+              ref={(el) => { codeRefs.current[i] = el; }}
+              type="text"
+              inputMode="numeric"
+              maxLength={6}
+              value={digit}
+              onChange={(e) => handleCodeChange(i, e.target.value)}
+              onKeyDown={(e) => handleCodeKeyDown(i, e)}
+              onFocus={(e) => e.target.select()}
+              className="input mono"
+              style={{
+                width: 44,
+                height: 52,
+                textAlign: "center",
+                fontSize: "var(--t-xl)",
+                fontWeight: 700,
+                padding: 0,
+              }}
+            />
+          ))}
+        </div>
       </div>
 
       {error && (
-        <div style={{
-          padding: "10px 14px",
-          background: "var(--danger-soft)",
-          color: "var(--danger)",
-          borderRadius: "var(--radius-md)",
-          fontSize: "var(--t-xs)",
-          fontWeight: 500,
-        }}>
+        <div
+          style={{
+            padding: "10px 14px",
+            background: "var(--danger-soft)",
+            color: "var(--danger)",
+            borderRadius: "var(--radius-sm)",
+            fontSize: "var(--t-xs)",
+            fontWeight: 500,
+            textAlign: "center",
+          }}
+        >
           {error}
         </div>
       )}
 
-      <GlassButton
-        type="submit"
-        variant="primary"
-        fullWidth
-        size="lg"
-        disabled={loading || code.join("").length !== 6}
-      >
+      <Button type="submit" variant="primary" fullWidth disabled={loading || code.join("").length !== 6}>
         {loading ? "Verificando..." : mode === "sign-in" ? "Iniciar sesión" : "Crear cuenta"}
-      </GlassButton>
+      </Button>
 
       <div style={{
         display: "flex",
         justifyContent: "space-between",
         alignItems: "center",
-        marginTop: "var(--sp-2)",
+        marginTop: "var(--sp-1)",
       }}>
         <button
           type="button"

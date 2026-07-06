@@ -5,43 +5,38 @@ interface Props {
 
 export default function AuthMethodTabs({ active, onChange }: Props) {
   const tabs = [
-    { id: "otp" as const, label: "📧 Código por email", desc: "Sin contraseña" },
-    { id: "password" as const, label: "🔑 Contraseña", desc: "Método tradicional" },
+    { id: "otp" as const, label: "Código por email" },
+    { id: "password" as const, label: "Contraseña" },
   ];
 
   return (
     <div
       style={{
-        display: "grid",
-        gridTemplateColumns: "1fr 1fr",
-        gap: "8px",
-        padding: "5px",
-        background: "var(--surface)",
-        boxShadow: "var(--nm-in-sm)",
-        borderRadius: "var(--radius-md)",
-        marginBottom: "var(--sp-4)",
+        display: "flex",
+        gap: "var(--sp-5)",
+        borderBottom: "1px solid var(--border)",
+        marginBottom: "var(--sp-5)",
       }}
     >
       {tabs.map((t) => (
         <button
           key={t.id}
+          type="button"
           onClick={() => onChange(t.id)}
           style={{
-            background: active === t.id ? "var(--surface)" : "transparent",
-            boxShadow: active === t.id ? "var(--nm-out-sm)" : "none",
+            background: "transparent",
             border: "none",
-            padding: "10px 12px",
-            borderRadius: "var(--radius-sm)",
+            borderBottom: active === t.id ? "2px solid var(--primary)" : "2px solid transparent",
+            marginBottom: "-1px",
+            padding: "0 0 10px",
             color: active === t.id ? "var(--primary)" : "var(--text-muted)",
-            fontSize: "var(--t-xs)",
-            fontWeight: active === t.id ? 700 : 500,
+            fontSize: "var(--t-sm)",
+            fontWeight: active === t.id ? 600 : 500,
             cursor: "pointer",
-            transition: "all 0.15s",
-            textAlign: "center",
-            lineHeight: 1.3,
+            transition: "color var(--dur), border-color var(--dur)",
           }}
         >
-          <div>{t.label}</div>
+          {t.label}
         </button>
       ))}
     </div>
