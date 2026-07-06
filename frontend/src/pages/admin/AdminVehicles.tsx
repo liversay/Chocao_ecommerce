@@ -1,11 +1,10 @@
 import { useEffect, useState } from "react";
 import { useApi } from "../../hooks/useApi";
-import GlassCard from "../../components/GlassCard";
-import GlassButton from "../../components/GlassButton";
-import GlassInput from "../../components/GlassInput";
-import NeumorphicSelect from "../../components/NeumorphicSelect";
+import Card from "../../components/Card";
+import Button from "../../components/Button";
+import Input from "../../components/Input";
+import Select from "../../components/Select";
 import DataTable from "../../components/DataTable";
-import StatusBadge from "../../components/StatusBadge";
 import PageHeader from "../../components/PageHeader";
 import LoadingState from "../../components/LoadingState";
 import EmptyState from "../../components/EmptyState";
@@ -133,12 +132,12 @@ export default function AdminVehicles() {
         eyebrow="Inventario"
         title="Gestión de vehículos"
         subtitle="Administra el catálogo completo de subastas"
-        actions={!showForm && <GlassButton variant="primary" onClick={openCreate}>+ Nuevo vehículo</GlassButton>}
+        actions={!showForm && <Button variant="primary" onClick={openCreate}>+ Nuevo vehículo</Button>}
       />
 
       {/* Form */}
       {showForm && (
-        <GlassCard padding="lg" style={{ marginBottom: "var(--sp-5)" }}>
+        <Card padding="lg" style={{ marginBottom: "var(--sp-5)" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--sp-5)" }}>
             <div>
               <h2 style={{ fontSize: "var(--t-lg)", color: "var(--text)" }}>
@@ -148,21 +147,9 @@ export default function AdminVehicles() {
                 Completa los campos requeridos para {editing ? "actualizar" : "registrar"} el vehículo
               </p>
             </div>
-            <button
-              onClick={() => setShowForm(false)}
-              style={{
-                width: 36, height: 36,
-                borderRadius: "50%",
-                background: "var(--surface)",
-                boxShadow: "var(--nm-out-sm)",
-                color: "var(--text-muted)",
-                fontSize: "1rem",
-                cursor: "pointer",
-                border: "none",
-              }}
-            >
+            <Button type="button" variant="ghost" size="sm" onClick={() => setShowForm(false)}>
               ✕
-            </button>
+            </Button>
           </div>
 
           <form onSubmit={handleSubmit}>
@@ -170,7 +157,7 @@ export default function AdminVehicles() {
             <div style={{ marginBottom: "var(--sp-5)" }}>
               <h3 style={{
                 fontSize: "var(--t-xs)",
-                color: "var(--accent)",
+                color: "var(--primary)",
                 textTransform: "uppercase",
                 letterSpacing: "0.08em",
                 fontWeight: 700,
@@ -178,11 +165,11 @@ export default function AdminVehicles() {
               }}>
                 Información básica
               </h3>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "var(--sp-3)" }}>
-                <GlassInput label="Título *" name="title" value={form.title} onChange={handleChange} required />
-                <GlassInput label="Marca *" name="brand" value={form.brand} onChange={handleChange} required />
-                <GlassInput label="Modelo *" name="model" value={form.model} onChange={handleChange} required />
-                <GlassInput label="Año *" name="year" type="number" value={form.year} onChange={handleChange} required />
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "var(--sp-3)" }}>
+                <Input label="Título *" name="title" value={form.title} onChange={handleChange} required />
+                <Input label="Marca *" name="brand" value={form.brand} onChange={handleChange} required />
+                <Input label="Modelo *" name="model" value={form.model} onChange={handleChange} required />
+                <Input label="Año *" name="year" type="number" value={form.year} onChange={handleChange} required />
               </div>
             </div>
 
@@ -190,7 +177,7 @@ export default function AdminVehicles() {
             <div style={{ marginBottom: "var(--sp-5)" }}>
               <h3 style={{
                 fontSize: "var(--t-xs)",
-                color: "var(--accent)",
+                color: "var(--primary)",
                 textTransform: "uppercase",
                 letterSpacing: "0.08em",
                 fontWeight: 700,
@@ -198,10 +185,10 @@ export default function AdminVehicles() {
               }}>
                 Especificaciones
               </h3>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "var(--sp-3)" }}>
-                <GlassInput label="Color" name="color" value={form.color} onChange={handleChange} />
-                <GlassInput label="Kilometraje" name="mileage" type="number" value={form.mileage} onChange={handleChange} />
-                <NeumorphicSelect
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "var(--sp-3)" }}>
+                <Input label="Color" name="color" value={form.color} onChange={handleChange} />
+                <Input label="Kilometraje" name="mileage" type="number" value={form.mileage} onChange={handleChange} />
+                <Select
                   label="Condición"
                   name="condition"
                   value={form.condition}
@@ -215,7 +202,7 @@ export default function AdminVehicles() {
             <div style={{ marginBottom: "var(--sp-5)" }}>
               <h3 style={{
                 fontSize: "var(--t-xs)",
-                color: "var(--accent)",
+                color: "var(--primary)",
                 textTransform: "uppercase",
                 letterSpacing: "0.08em",
                 fontWeight: 700,
@@ -223,17 +210,17 @@ export default function AdminVehicles() {
               }}>
                 Subasta
               </h3>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "var(--sp-3)" }}>
-                <GlassInput label="Precio base (USD) *" name="basePrice" type="number" value={form.basePrice} onChange={handleChange} required />
-                <NeumorphicSelect
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "var(--sp-3)" }}>
+                <Input label="Precio base (USD) *" name="basePrice" type="number" value={form.basePrice} onChange={handleChange} required />
+                <Select
                   label="Estado"
                   name="status"
                   value={form.status}
                   onChange={handleChange}
                   options={STATUSES}
                 />
-                <GlassInput label="Inicio subasta" name="auctionStartDate" type="date" value={form.auctionStartDate} onChange={handleChange} />
-                <GlassInput label="Fin subasta" name="auctionEndDate" type="date" value={form.auctionEndDate} onChange={handleChange} />
+                <Input label="Inicio subasta" name="auctionStartDate" type="date" value={form.auctionStartDate} onChange={handleChange} />
+                <Input label="Fin subasta" name="auctionEndDate" type="date" value={form.auctionEndDate} onChange={handleChange} />
               </div>
             </div>
 
@@ -241,7 +228,7 @@ export default function AdminVehicles() {
             <div style={{ marginBottom: "var(--sp-5)" }}>
               <h3 style={{
                 fontSize: "var(--t-xs)",
-                color: "var(--accent)",
+                color: "var(--primary)",
                 textTransform: "uppercase",
                 letterSpacing: "0.08em",
                 fontWeight: 700,
@@ -251,32 +238,15 @@ export default function AdminVehicles() {
               </h3>
               <div style={{ display: "flex", flexDirection: "column", gap: "var(--sp-4)" }}>
                 <ImageDropzone value={images} onChange={setImages} />
-                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  <label style={{
-                    fontSize: "var(--t-xs)",
-                    fontWeight: 600,
-                    color: "var(--text-muted)",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.05em",
-                  }}>
-                    Descripción
-                  </label>
+                <div className="field">
+                  <label className="field-label">Descripción</label>
                   <textarea
                     name="description"
                     value={form.description}
                     onChange={handleChange}
                     rows={4}
-                    style={{
-                      background: "var(--surface)",
-                      border: "none",
-                      color: "var(--text)",
-                      fontSize: "var(--t-base)",
-                      padding: "13px 16px",
-                      borderRadius: "var(--radius-md)",
-                      boxShadow: "var(--nm-in-sm)",
-                      resize: "vertical",
-                      fontFamily: "inherit",
-                    }}
+                    className="input"
+                    style={{ resize: "vertical", fontFamily: "inherit" }}
                   />
                 </div>
               </div>
@@ -297,19 +267,19 @@ export default function AdminVehicles() {
             )}
 
             <div style={{ display: "flex", gap: "var(--sp-3)", justifyContent: "flex-end" }}>
-              <GlassButton type="button" variant="ghost" onClick={() => setShowForm(false)}>
+              <Button type="button" variant="ghost" onClick={() => setShowForm(false)}>
                 Cancelar
-              </GlassButton>
-              <GlassButton type="submit" variant="primary" disabled={saving}>
+              </Button>
+              <Button type="submit" variant="primary" disabled={saving}>
                 {saving ? "Guardando..." : editing ? "Actualizar vehículo" : "Crear vehículo"}
-              </GlassButton>
+              </Button>
             </div>
           </form>
-        </GlassCard>
+        </Card>
       )}
 
       {/* Table */}
-      <GlassCard>
+      <Card>
         {loading ? (
           <LoadingState />
         ) : vehicles.length === 0 ? (
@@ -317,16 +287,36 @@ export default function AdminVehicles() {
             icon="🚗"
             title="No hay vehículos registrados"
             description="Comienza agregando tu primer vehículo al catálogo."
-            action={<GlassButton variant="primary" onClick={openCreate}>+ Agregar vehículo</GlassButton>}
+            action={<Button variant="primary" onClick={openCreate}>+ Agregar vehículo</Button>}
           />
         ) : (
           <DataTable
+            dense
             columns={[
+              {
+                header: "",
+                width: "56px",
+                accessor: (v) => (
+                  v.images && v.images.length > 0 ? (
+                    <img
+                      src={v.images[0]}
+                      alt={v.title}
+                      style={{ width: 40, height: 40, borderRadius: "var(--radius-sm)", objectFit: "cover", border: "1px solid var(--border)" }}
+                    />
+                  ) : (
+                    <div style={{ width: 40, height: 40, borderRadius: "var(--radius-sm)", background: "var(--bg-alt)", border: "1px solid var(--border)" }} />
+                  )
+                ),
+              },
+              {
+                header: "ID",
+                accessor: (v) => <span className="mono" style={{ color: "var(--text-soft)" }}>{v._id.slice(-6)}</span>,
+              },
               {
                 header: "Vehículo",
                 accessor: (v) => (
                   <div>
-                    <p style={{ fontWeight: 700, color: "var(--text)", fontSize: "var(--t-sm)" }}>{v.title}</p>
+                    <p style={{ fontWeight: 600, color: "var(--text)" }}>{v.title}</p>
                     <p style={{ fontSize: "var(--t-xs)", color: "var(--text-soft)" }}>
                       {v.brand} · {v.model} · {v.year}
                     </p>
@@ -336,51 +326,29 @@ export default function AdminVehicles() {
               {
                 header: "Estado",
                 accessor: (v) => (
-                  <select
+                  <Select
                     value={v.status}
                     onChange={(e) => handleStatus(v._id, e.target.value)}
-                    style={{
-                      appearance: "none",
-                      WebkitAppearance: "none",
-                      background: "var(--surface)",
-                      boxShadow: "var(--nm-in-sm)",
-                      border: "none",
-                      borderRadius: "var(--radius-pill)",
-                      padding: "5px 28px 5px 14px",
-                      color: "var(--text)",
-                      fontSize: "var(--t-xs)",
-                      fontWeight: 600,
-                      cursor: "pointer",
-                      backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%235a6878' d='M5 6L0 0h10z'/%3E%3C/svg%3E\")",
-                      backgroundRepeat: "no-repeat",
-                      backgroundPosition: "right 12px center",
-                      backgroundSize: "8px",
-                    }}
-                  >
-                    {STATUSES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
-                  </select>
+                    options={STATUSES}
+                  />
                 ),
               },
               {
-                header: "Precio actual",
+                header: "Precio",
                 align: "right",
                 accessor: (v) => (
-                  <span style={{ color: "var(--accent)", fontWeight: 700 }}>
+                  <span className="mono" style={{ fontWeight: 600 }}>
                     ${v.currentPrice.toLocaleString()}
                   </span>
                 ),
-              },
-              {
-                header: "Estado base",
-                accessor: (v) => <StatusBadge status={v.status} />,
               },
               {
                 header: "",
                 align: "right",
                 accessor: (v) => (
                   <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
-                    <GlassButton size="sm" variant="ghost" onClick={() => openEdit(v)}>Editar</GlassButton>
-                    <GlassButton size="sm" variant="danger" onClick={() => handleDelete(v._id)}>Eliminar</GlassButton>
+                    <Button size="sm" variant="ghost" onClick={() => openEdit(v)}>Editar</Button>
+                    <Button size="sm" variant="ghost" onClick={() => handleDelete(v._id)} style={{ color: "var(--danger)" }}>Eliminar</Button>
                   </div>
                 ),
               },
@@ -389,7 +357,7 @@ export default function AdminVehicles() {
             emptyMessage="No hay vehículos"
           />
         )}
-      </GlassCard>
+      </Card>
     </div>
   );
 }
