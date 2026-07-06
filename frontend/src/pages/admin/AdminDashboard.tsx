@@ -53,11 +53,6 @@ export default function AdminDashboard() {
         eyebrow="Panel administrativo"
         title="Dashboard"
         subtitle="Resumen general del sistema y métricas en tiempo real"
-        actions={
-          <Link to="/admin/vehicles">
-            <Button variant="primary">+ Nuevo vehículo</Button>
-          </Link>
-        }
       />
 
       {summary && (

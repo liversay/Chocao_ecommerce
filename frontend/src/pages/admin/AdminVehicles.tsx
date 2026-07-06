@@ -26,6 +26,29 @@ const CONDITIONS = [
   { value: "poor", label: "Malo" },
 ];
 
+const CONDITION_HELP: Record<string, string> = {
+  excellent: "Como nuevo: sin detalles estéticos ni mecánicos",
+  good: "Buen estado general: detalles menores de uso",
+  fair: "Uso notable: requiere mantenimiento próximamente",
+  poor: "Daños importantes: requiere reparación",
+};
+
+const BRANDS = [
+  "Acura", "Alfa Romeo", "Audi", "BMW", "BYD", "Changan", "Chery", "Chevrolet",
+  "Chrysler", "Citroën", "Dodge", "Fiat", "Ford", "Geely", "GMC", "Great Wall",
+  "Honda", "Hyundai", "Infiniti", "Isuzu", "JAC", "Jaguar", "Jeep", "Kia",
+  "Land Rover", "Lexus", "Mazda", "Mercedes-Benz", "MG", "Mini", "Mitsubishi",
+  "Nissan", "Peugeot", "Porsche", "RAM", "Renault", "Seat", "Škoda", "SsangYong",
+  "Subaru", "Suzuki", "Tesla", "Toyota", "Volkswagen", "Volvo", "Otra",
+];
+
+const COLORS = [
+  "Amarillo", "Azul", "Beige", "Blanco", "Dorado", "Gris", "Marrón", "Naranja",
+  "Negro", "Plata", "Rojo", "Verde", "Vinotinto", "Otro",
+];
+
+const CURRENT_YEAR = new Date().getFullYear();
+
 const EMPTY_FORM = {
   title: "", brand: "", model: "", year: "", color: "", mileage: "",
   condition: "good", description: "", basePrice: "",
@@ -42,6 +65,8 @@ export default function AdminVehicles() {
   const [images, setImages] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [initialStartDate, setInitialStartDate] = useState("");
 
   function loadVehicles() {
     setLoading(true);
@@ -58,12 +83,15 @@ export default function AdminVehicles() {
     setForm(EMPTY_FORM);
     setImages([]);
     setError("");
+    setErrors({});
+    setInitialStartDate("");
     setShowForm(true);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function openEdit(v: Vehicle) {
     setEditing(v);
+    const startDate = v.auctionStartDate ? v.auctionStartDate.slice(0, 10) : "";
     setForm({
       title: v.title, brand: v.brand, model: v.model,
       year: String(v.year), color: v.color || "",
@@ -72,23 +100,93 @@ export default function AdminVehicles() {
       description: v.description || "",
       basePrice: String(v.basePrice),
       status: v.status,
-      auctionStartDate: v.auctionStartDate ? v.auctionStartDate.slice(0, 10) : "",
+      auctionStartDate: startDate,
       auctionEndDate: v.auctionEndDate ? v.auctionEndDate.slice(0, 10) : "",
     });
     setImages(v.images || []);
     setError("");
+    setErrors({});
+    setInitialStartDate(startDate);
     setShowForm(true);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) {
-    setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
+    const { name, value } = e.target;
+    setForm((f) => ({ ...f, [name]: value }));
+    setErrors((prev) => {
+      if (!prev[name]) return prev;
+      const next = { ...prev };
+      delete next[name];
+      return next;
+    });
+  }
+
+  function validate(f: typeof form): Record<string, string> {
+    const errs: Record<string, string> = {};
+
+    if (!f.brand) errs.brand = "La marca es requerida";
+
+    if (!f.year) {
+      errs.year = "El año es requerido";
+    } else {
+      const y = parseInt(f.year, 10);
+      if (isNaN(y) || y < 1990 || y > CURRENT_YEAR) {
+        errs.year = `El año debe estar entre 1990 y ${CURRENT_YEAR}`;
+      }
+    }
+
+    if (f.mileage) {
+      const km = parseInt(f.mileage, 10);
+      if (!isNaN(km) && km < 0) {
+        errs.mileage = "El kilometraje no puede ser negativo";
+      }
+    }
+
+    if (!f.basePrice) {
+      errs.basePrice = "El precio base es requerido";
+    } else {
+      const price = parseFloat(f.basePrice);
+      if (isNaN(price) || price <= 0) {
+        errs.basePrice = "El precio base debe ser mayor que 0";
+      }
+    }
+
+    if (f.auctionStartDate && f.auctionStartDate !== initialStartDate) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const start = new Date(`${f.auctionStartDate}T00:00:00`);
+      if (start < today) {
+        errs.auctionStartDate = "El inicio no puede ser anterior a hoy";
+      }
+    }
+
+    if (f.auctionEndDate) {
+      if (!f.auctionStartDate) {
+        errs.auctionEndDate = "Define primero el inicio de la subasta";
+      } else {
+        const start = new Date(`${f.auctionStartDate}T00:00:00`);
+        const end = new Date(`${f.auctionEndDate}T00:00:00`);
+        const oneDay = 24 * 60 * 60 * 1000;
+        if (end.getTime() - start.getTime() < oneDay) {
+          errs.auctionEndDate = "El fin debe ser al menos un día después del inicio";
+        }
+      }
+    }
+
+    return errs;
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setSaving(true);
     setError("");
+    const validationErrors = validate(form);
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
+    setErrors({});
+    setSaving(true);
     const payload = {
       ...form,
       year: parseInt(form.year),
@@ -126,6 +224,16 @@ export default function AdminVehicles() {
     loadVehicles();
   }
 
+  const brandOptions = BRANDS.includes(form.brand) || !form.brand
+    ? BRANDS.map((b) => ({ value: b, label: b }))
+    : [{ value: form.brand, label: form.brand }, ...BRANDS.map((b) => ({ value: b, label: b }))];
+
+  const colorOptions = [
+    { value: "", label: "— Seleccionar —" },
+    ...(form.color && !COLORS.includes(form.color) ? [{ value: form.color, label: form.color }] : []),
+    ...COLORS.map((c) => ({ value: c, label: c })),
+  ];
+
   return (
     <div className="fade-in">
       <PageHeader
@@ -152,7 +260,7 @@ export default function AdminVehicles() {
             </Button>
           </div>
 
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} noValidate>
             {/* Section: Basic info */}
             <div style={{ marginBottom: "var(--sp-5)" }}>
               <h3 style={{
@@ -167,9 +275,27 @@ export default function AdminVehicles() {
               </h3>
               <div className="grid-2" style={{ gap: "var(--sp-3)" }}>
                 <Input label="Título *" name="title" value={form.title} onChange={handleChange} required />
-                <Input label="Marca *" name="brand" value={form.brand} onChange={handleChange} required />
+                <Select
+                  label="Marca *"
+                  name="brand"
+                  value={form.brand}
+                  onChange={handleChange}
+                  options={brandOptions}
+                  error={errors.brand}
+                  required
+                />
                 <Input label="Modelo *" name="model" value={form.model} onChange={handleChange} required />
-                <Input label="Año *" name="year" type="number" value={form.year} onChange={handleChange} required />
+                <Input
+                  label="Año *"
+                  name="year"
+                  type="number"
+                  min={1990}
+                  max={CURRENT_YEAR}
+                  value={form.year}
+                  onChange={handleChange}
+                  error={errors.year}
+                  required
+                />
               </div>
             </div>
 
@@ -186,15 +312,37 @@ export default function AdminVehicles() {
                 Especificaciones
               </h3>
               <div className="grid-2" style={{ gap: "var(--sp-3)" }}>
-                <Input label="Color" name="color" value={form.color} onChange={handleChange} />
-                <Input label="Kilometraje" name="mileage" type="number" value={form.mileage} onChange={handleChange} />
                 <Select
-                  label="Condición"
-                  name="condition"
-                  value={form.condition}
+                  label="Color"
+                  name="color"
+                  value={form.color}
                   onChange={handleChange}
-                  options={CONDITIONS}
+                  options={colorOptions}
+                  error={errors.color}
                 />
+                <Input
+                  label="Kilometraje"
+                  name="mileage"
+                  type="number"
+                  min={0}
+                  value={form.mileage}
+                  onChange={handleChange}
+                  error={errors.mileage}
+                />
+                <div>
+                  <Select
+                    label="Condición"
+                    name="condition"
+                    value={form.condition}
+                    onChange={handleChange}
+                    options={CONDITIONS}
+                  />
+                  {CONDITION_HELP[form.condition] && (
+                    <p className="text-muted" style={{ fontSize: "var(--t-xs)", marginTop: 4 }}>
+                      {CONDITION_HELP[form.condition]}
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -211,7 +359,15 @@ export default function AdminVehicles() {
                 Subasta
               </h3>
               <div className="grid-2" style={{ gap: "var(--sp-3)" }}>
-                <Input label="Precio base (USD) *" name="basePrice" type="number" value={form.basePrice} onChange={handleChange} required />
+                <Input
+                  label="Precio base (USD) *"
+                  name="basePrice"
+                  type="number"
+                  value={form.basePrice}
+                  onChange={handleChange}
+                  error={errors.basePrice}
+                  required
+                />
                 <Select
                   label="Estado"
                   name="status"
@@ -219,8 +375,22 @@ export default function AdminVehicles() {
                   onChange={handleChange}
                   options={STATUSES}
                 />
-                <Input label="Inicio subasta" name="auctionStartDate" type="date" value={form.auctionStartDate} onChange={handleChange} />
-                <Input label="Fin subasta" name="auctionEndDate" type="date" value={form.auctionEndDate} onChange={handleChange} />
+                <Input
+                  label="Inicio subasta"
+                  name="auctionStartDate"
+                  type="date"
+                  value={form.auctionStartDate}
+                  onChange={handleChange}
+                  error={errors.auctionStartDate}
+                />
+                <Input
+                  label="Fin subasta"
+                  name="auctionEndDate"
+                  type="date"
+                  value={form.auctionEndDate}
+                  onChange={handleChange}
+                  error={errors.auctionEndDate}
+                />
               </div>
             </div>
 
