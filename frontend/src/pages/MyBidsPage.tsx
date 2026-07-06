@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useApi } from "../hooks/useApi";
-import GlassCard from "../components/GlassCard";
-import GlassButton from "../components/GlassButton";
+import Card from "../components/Card";
+import Button from "../components/Button";
+import DataTable from "../components/DataTable";
 import PageHeader from "../components/PageHeader";
 import EmptyState from "../components/EmptyState";
 import LoadingState from "../components/LoadingState";
@@ -34,8 +35,13 @@ export default function MyBidsPage() {
 
   // Stats
   const totalBids = bids.length;
-  const winning = bids.filter((b) => b.status === "active").length;
-  const won = bids.filter((b) => b.status === "winner" || b.status === "paid").length;
+  const activeBids = bids.filter((b) => b.status === "active").length;
+  const wonBids = bids.filter((b) => b.status === "winner" || b.status === "paid").length;
+
+  function vehicleHref(bid: Bid) {
+    const vehicle = bid.vehicleId as Vehicle;
+    return `/vehicles/${typeof bid.vehicleId === "string" ? bid.vehicleId : vehicle?._id}`;
+  }
 
   return (
     <div className="container fade-in" style={{ padding: "var(--sp-6) var(--sp-5)" }}>
@@ -45,127 +51,107 @@ export default function MyBidsPage() {
         subtitle="Historial completo de pujas y adjudicaciones"
       />
 
-      {/* Quick stats */}
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-        gap: "var(--sp-3)",
-        marginBottom: "var(--sp-5)",
-      }}>
-        {[
-          { label: "Total de pujas", value: totalBids, color: "var(--primary)" },
-          { label: "Activas", value: winning, color: "var(--success)" },
-          { label: "Ganadas", value: won, color: "var(--accent)" },
-        ].map((s) => (
-          <GlassCard key={s.label} padding="md">
-            <p style={{ fontSize: "var(--t-xs)", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>
-              {s.label}
-            </p>
-            <p style={{ fontSize: "var(--t-2xl)", fontWeight: 800, color: s.color, letterSpacing: "-0.03em", marginTop: 4 }}>
-              {s.value}
-            </p>
-          </GlassCard>
-        ))}
-      </div>
-
-      {loading ? (
-        <LoadingState />
-      ) : bids.length === 0 ? (
-        <EmptyState
-          icon="🏷️"
-          title="Aún no has participado en subastas"
-          description="Explora el catálogo y realiza tu primera puja en un vehículo activo."
-          action={
-            <Link to="/vehicles">
-              <GlassButton variant="primary">Ir al catálogo</GlassButton>
-            </Link>
-          }
-        />
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: "var(--sp-3)" }}>
-          {bids.map((bid) => {
-            const vehicle = bid.vehicleId as Vehicle;
-            const img = vehicle?.images?.[0] || CAR_PLACEHOLDER;
-            const isWinner = bid.status === "winner";
-            const isPaid = bid.status === "paid";
-
-            return (
-              <GlassCard key={bid._id}>
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "120px 1fr auto auto",
-                    gap: "var(--sp-4)",
-                    alignItems: "center",
-                  }}
-                >
-                  {/* Thumbnail */}
-                  <div style={{
-                    width: 120, height: 80,
-                    borderRadius: "var(--radius-md)",
-                    overflow: "hidden",
-                    background: "var(--bg-deep)",
-                    boxShadow: "var(--nm-in-sm)",
-                  }}>
-                    <img src={img} alt={vehicle?.title} style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                      onError={(e) => { (e.target as HTMLImageElement).src = CAR_PLACEHOLDER; }} />
-                  </div>
-
-                  {/* Info */}
-                  <div>
-                    <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap", marginBottom: 4 }}>
-                      <h3 style={{ fontSize: "var(--t-md)", color: "var(--text)" }}>
-                        {vehicle?.title || "Vehículo"}
-                      </h3>
-                      <StatusBadge status={bid.status} />
-                    </div>
-                    <p style={{ fontSize: "var(--t-sm)", color: "var(--text-muted)" }}>
-                      {vehicle?.brand} {vehicle?.model} · {vehicle?.year}
-                    </p>
-                    <p style={{ fontSize: "var(--t-xs)", color: "var(--text-soft)", marginTop: 4 }}>
-                      Puja realizada el {new Date(bid.createdAt).toLocaleDateString("es-PA", { day: "numeric", month: "long", year: "numeric" })}
-                    </p>
-                  </div>
-
-                  {/* Amount */}
-                  <div style={{ textAlign: "right" }}>
-                    <p style={{ fontSize: "var(--t-xs)", color: "var(--text-soft)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>
-                      Tu puja
-                    </p>
-                    <p style={{
-                      fontSize: "var(--t-xl)",
-                      fontWeight: 800,
-                      color: isWinner || isPaid ? "var(--accent)" : "var(--text)",
-                      letterSpacing: "-0.03em",
-                    }}>
-                      ${bid.amount.toLocaleString()}
-                    </p>
-                  </div>
-
-                  {/* Actions */}
-                  <div style={{ display: "flex", flexDirection: "column", gap: "8px", minWidth: 140 }}>
-                    <Link to={`/vehicles/${typeof bid.vehicleId === "string" ? bid.vehicleId : vehicle?._id}`}>
-                      <GlassButton variant="ghost" size="sm" fullWidth>Ver vehículo</GlassButton>
-                    </Link>
-                    {isWinner && (
-                      <GlassButton variant="accent" size="sm" fullWidth onClick={() => handleCheckout(bid)}>
-                        💳 Pagar ahora
-                      </GlassButton>
-                    )}
-                    {isPaid && (
-                      <Link to="/my-purchases">
-                        <GlassButton variant="ghost" size="sm" fullWidth>
-                          ✓ Ver compra
-                        </GlassButton>
-                      </Link>
-                    )}
-                  </div>
-                </div>
-              </GlassCard>
-            );
-          })}
+      <Card padding="md" style={{ marginBottom: "var(--sp-5)" }}>
+        <div className="stat-strip">
+          <div className="stat-strip-item">
+            <p className="stat-strip-value">{totalBids}</p>
+            <p className="stat-strip-label">Pujas totales</p>
+          </div>
+          <div className="stat-strip-item">
+            <p className="stat-strip-value">{activeBids}</p>
+            <p className="stat-strip-label">Activas</p>
+          </div>
+          <div className="stat-strip-item">
+            <p className="stat-strip-value">{wonBids}</p>
+            <p className="stat-strip-label">Ganadas</p>
+          </div>
         </div>
-      )}
+      </Card>
+
+      <Card padding="none">
+        {loading ? (
+          <LoadingState />
+        ) : bids.length === 0 ? (
+          <EmptyState
+            icon="🏷️"
+            title="Aún no has participado en subastas"
+            description="Explora el catálogo y realiza tu primera puja en un vehículo activo."
+            action={
+              <Link to="/vehicles">
+                <Button variant="primary">Ir al catálogo</Button>
+              </Link>
+            }
+          />
+        ) : (
+          <DataTable<Bid>
+            columns={[
+              {
+                header: "Vehículo",
+                accessor: (bid) => {
+                  const vehicle = bid.vehicleId as Vehicle;
+                  const img = vehicle?.images?.[0] || CAR_PLACEHOLDER;
+                  return (
+                    <Link
+                      to={vehicleHref(bid)}
+                      style={{ display: "flex", alignItems: "center", gap: "10px" }}
+                    >
+                      <img
+                        src={img}
+                        alt={vehicle?.title || "Vehículo"}
+                        style={{
+                          width: 40,
+                          height: 40,
+                          borderRadius: "var(--radius-sm)",
+                          objectFit: "cover",
+                          flexShrink: 0,
+                          border: "1px solid var(--border)",
+                        }}
+                        onError={(e) => { (e.target as HTMLImageElement).src = CAR_PLACEHOLDER; }}
+                      />
+                      <span style={{ fontWeight: 600, color: "var(--text)", fontSize: "var(--t-sm)" }}>
+                        {vehicle?.title || "Vehículo"}
+                      </span>
+                    </Link>
+                  );
+                },
+              },
+              {
+                header: "Monto",
+                align: "right",
+                accessor: (bid) => (
+                  <span className={`mono${bid.status === "winner" ? " price-accent" : ""}`} style={{ fontWeight: 700 }}>
+                    ${bid.amount.toLocaleString()}
+                  </span>
+                ),
+              },
+              {
+                header: "Estado",
+                accessor: (bid) => <StatusBadge status={bid.status} />,
+              },
+              {
+                header: "Fecha",
+                accessor: (bid) => (
+                  <span style={{ color: "var(--text-muted)", fontSize: "var(--t-xs)" }}>
+                    {new Date(bid.createdAt).toLocaleDateString("es-PA", { day: "numeric", month: "short", year: "numeric" })}
+                  </span>
+                ),
+              },
+              {
+                header: "Acción",
+                align: "right",
+                accessor: (bid) =>
+                  bid.status === "winner" ? (
+                    <Button variant="primary" size="sm" onClick={() => handleCheckout(bid)}>
+                      Pagar ahora
+                    </Button>
+                  ) : null,
+              },
+            ]}
+            data={bids}
+            emptyMessage="No has realizado pujas"
+          />
+        )}
+      </Card>
     </div>
   );
 }
