@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import axios from "axios";
+import { useAuth } from "@clerk/react";
 import Button from "../components/Button";
 import Card from "../components/Card";
 import Countdown from "../components/Countdown";
@@ -19,6 +20,7 @@ const steps = [
 ];
 
 export default function Landing() {
+  const { isSignedIn } = useAuth();
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
 
   useEffect(() => {
@@ -47,10 +49,6 @@ export default function Landing() {
       <section className="section">
         <div className="container hero-grid">
           <div>
-            <p className="eyebrow" style={{ marginBottom: "var(--sp-4)" }}>
-              República de Panamá · Subasta pública
-            </p>
-
             <h1
               style={{
                 fontSize: "var(--t-3xl)",
@@ -80,9 +78,11 @@ export default function Landing() {
               <Link to="/vehicles">
                 <Button variant="primary" size="lg">Ver catálogo</Button>
               </Link>
-              <Link to="/register">
-                <Button variant="secondary" size="lg">Crear cuenta</Button>
-              </Link>
+              {!isSignedIn && (
+                <Link to="/register">
+                  <Button variant="secondary" size="lg">Crear cuenta</Button>
+                </Link>
+              )}
             </div>
 
             <div className="trust-line">
@@ -222,17 +222,19 @@ export default function Landing() {
       </section>
 
       {/* CTA FINAL */}
-      <section className="section section-dark" style={{ textAlign: "center" }}>
-        <div className="container">
-          <h2 style={{ fontSize: "var(--t-2xl)", marginBottom: "var(--sp-3)" }}>¿Listo para participar?</h2>
-          <p style={{ marginBottom: "var(--sp-5)", opacity: 0.85, maxWidth: 520, marginLeft: "auto", marginRight: "auto" }}>
-            Regístrate gratuitamente y accede al catálogo completo de vehículos disponibles.
-          </p>
-          <Link to="/register">
-            <Button variant="inverse" size="lg">Crear cuenta gratuita</Button>
-          </Link>
-        </div>
-      </section>
+      {!isSignedIn && (
+        <section className="section section-dark" style={{ textAlign: "center" }}>
+          <div className="container">
+            <h2 style={{ fontSize: "var(--t-2xl)", marginBottom: "var(--sp-3)" }}>¿Listo para participar?</h2>
+            <p style={{ marginBottom: "var(--sp-5)", opacity: 0.85, maxWidth: 520, marginLeft: "auto", marginRight: "auto" }}>
+              Regístrate gratuitamente y accede al catálogo completo de vehículos disponibles.
+            </p>
+            <Link to="/register">
+              <Button variant="inverse" size="lg">Crear cuenta gratuita</Button>
+            </Link>
+          </div>
+        </section>
+      )}
     </div>
   );
 }

@@ -52,6 +52,9 @@ bids.post("/vehicle/:id", requireAuth, async (c) => {
   if (vehicle.status !== "active") {
     return c.json({ error: "Este vehículo no está abierto para pujas en este momento" }, 400);
   }
+  if (vehicle.auctionEndDate && new Date(vehicle.auctionEndDate) < new Date()) {
+    return c.json({ error: "La subasta ya finalizó; no se aceptan más pujas" }, 400);
+  }
   if (amount <= vehicle.currentPrice) {
     return c.json({ error: `Tu puja debe ser mayor a la oferta actual ($${vehicle.currentPrice.toLocaleString()})` }, 400);
   }

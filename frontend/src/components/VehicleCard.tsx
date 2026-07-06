@@ -22,20 +22,28 @@ export default function VehicleCard({ vehicle }: Props) {
 
   return (
     <Link to={`/vehicles/${vehicle._id}`} style={{ display: "block", height: "100%" }}>
-      <Card padding="none" interactive style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+      <Card
+        padding="none"
+        interactive
+        style={{ height: "100%", display: "flex", flexDirection: "column", overflow: "hidden" }}
+      >
         <div
           style={{
             position: "relative",
             width: "100%",
             aspectRatio: "16 / 10",
             overflow: "hidden",
+            display: "block",
+            lineHeight: 0,
+            borderTopLeftRadius: "var(--radius-md)",
+            borderTopRightRadius: "var(--radius-md)",
             borderBottom: "1px solid var(--hairline)",
           }}
         >
           <img
             src={img}
             alt={vehicle.title}
-            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center", display: "block" }}
             onError={(e) => { (e.target as HTMLImageElement).src = CAR_PLACEHOLDER; }}
           />
           <div style={{ position: "absolute", top: 12, right: 12 }}>

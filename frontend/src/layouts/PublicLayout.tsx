@@ -38,9 +38,9 @@ export default function PublicLayout() {
           </div>
           <div style={{ display: "flex", gap: "var(--sp-5)", flexWrap: "wrap" }}>
             <Link to="/vehicles" style={{ fontSize: "var(--t-xs)", color: "var(--text-muted)", fontWeight: 500 }}>Catálogo</Link>
-            <a href="#" style={{ fontSize: "var(--t-xs)", color: "var(--text-muted)", fontWeight: 500 }}>Términos</a>
-            <a href="#" style={{ fontSize: "var(--t-xs)", color: "var(--text-muted)", fontWeight: 500 }}>Privacidad</a>
-            <a href="#" style={{ fontSize: "var(--t-xs)", color: "var(--text-muted)", fontWeight: 500 }}>Contacto</a>
+            <Link to="/terms" style={{ fontSize: "var(--t-xs)", color: "var(--text-muted)", fontWeight: 500 }}>Términos</Link>
+            <Link to="/privacy" style={{ fontSize: "var(--t-xs)", color: "var(--text-muted)", fontWeight: 500 }}>Privacidad</Link>
+            <Link to="/contact" style={{ fontSize: "var(--t-xs)", color: "var(--text-muted)", fontWeight: 500 }}>Contacto</Link>
           </div>
           <p style={{ fontSize: "var(--t-xs)", color: "var(--text-soft)" }}>
             © {new Date().getFullYear()} República de Panamá

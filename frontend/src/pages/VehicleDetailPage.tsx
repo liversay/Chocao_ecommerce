@@ -63,6 +63,7 @@ export default function VehicleDetailPage() {
 
   const images = vehicle.images?.length ? vehicle.images : [CAR_PLACEHOLDER];
   const isActive = vehicle.status === "active";
+  const hasEnded = vehicle.auctionEndDate ? new Date(vehicle.auctionEndDate) < new Date() : false;
 
   const specs: Spec[] = [
     { label: "Marca", value: vehicle.brand },
@@ -223,7 +224,7 @@ export default function VehicleDetailPage() {
               </div>
             )}
 
-            {!isActive ? (
+            {!isActive || hasEnded ? (
               <div
                 style={{
                   padding: "var(--sp-4)",
@@ -235,7 +236,7 @@ export default function VehicleDetailPage() {
                   fontSize: "var(--t-sm)",
                 }}
               >
-                Este vehículo no está abierto para pujas en este momento.
+                {hasEnded ? "La subasta ha finalizado." : "Este vehículo no está abierto para pujas en este momento."}
               </div>
             ) : !isSignedIn ? (
               <div style={{ textAlign: "center" }}>
