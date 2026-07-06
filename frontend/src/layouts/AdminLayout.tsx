@@ -1,14 +1,23 @@
 import { Outlet, NavLink, Link, useNavigate } from "react-router-dom";
 import { useClerk, useUser } from "@clerk/react";
 import { useState } from "react";
-import GlassButton from "../components/GlassButton";
+import Button from "../components/Button";
+import Card from "../components/Card";
 import Logo from "../components/Logo";
 
-const navItems = [
-  { to: "/admin", label: "Dashboard", icon: "▤", end: true },
-  { to: "/admin/vehicles", label: "Vehículos", icon: "▦", end: false },
-  { to: "/admin/bids", label: "Ofertas", icon: "◈", end: false },
-  { to: "/admin/reports", label: "Reportes", icon: "▣", end: false },
+const navGroups = [
+  {
+    label: "Gestión",
+    items: [
+      { to: "/admin", label: "Dashboard", icon: "▤", end: true },
+      { to: "/admin/vehicles", label: "Vehículos", icon: "▦", end: false },
+      { to: "/admin/bids", label: "Pujas", icon: "◈", end: false },
+    ],
+  },
+  {
+    label: "Análisis",
+    items: [{ to: "/admin/reports", label: "Reportes", icon: "▣", end: false }],
+  },
 ];
 
 export default function AdminLayout() {
@@ -17,26 +26,11 @@ export default function AdminLayout() {
   const navigate = useNavigate();
   const [showConfirm, setShowConfirm] = useState(false);
 
+  const initials = (user?.firstName?.[0] || user?.emailAddresses[0]?.emailAddress?.[0] || "?").toUpperCase();
+
   return (
-    <div style={{ display: "flex", minHeight: "100vh", background: "var(--bg)" }}>
-      {/* Sidebar */}
-      <aside
-        style={{
-          width: 250,
-          background: "var(--bg)",
-          padding: "var(--sp-5) var(--sp-4)",
-          display: "flex",
-          flexDirection: "column",
-          gap: "var(--sp-2)",
-          position: "fixed",
-          top: 0,
-          left: 0,
-          bottom: 0,
-          borderRight: "1px solid var(--hairline)",
-          zIndex: 50,
-        }}
-      >
-        {/* Brand */}
+    <div className="admin-theme admin-shell">
+      <aside className="admin-sidebar">
         <Link
           to="/"
           style={{
@@ -46,82 +40,54 @@ export default function AdminLayout() {
             padding: "var(--sp-2) var(--sp-3) var(--sp-5)",
           }}
         >
-          <Logo size={42} />
+          <Logo size={32} />
           <div>
             <p style={{ fontWeight: 800, fontSize: "var(--t-md)", color: "var(--text)", letterSpacing: "-0.02em", lineHeight: 1 }}>
               Chocao
             </p>
-            <p
-              style={{
-                fontSize: "0.65rem",
-                color: "var(--accent)",
-                fontWeight: 700,
-                textTransform: "uppercase",
-                letterSpacing: "0.12em",
-                marginTop: 4,
-              }}
-            >
+            <span className="admin-chip" style={{ marginTop: 4, display: "inline-block" }}>
               Backoffice
-            </p>
+            </span>
           </div>
         </Link>
 
-        {/* Nav */}
-        <nav style={{ flex: 1, display: "flex", flexDirection: "column", gap: "6px" }}>
-          {navItems.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.end}
-              style={({ isActive }) => ({
-                display: "flex",
-                alignItems: "center",
-                gap: "12px",
-                padding: "11px 14px",
-                borderRadius: "var(--radius-md)",
-                color: isActive ? "var(--primary)" : "var(--text-muted)",
-                fontSize: "var(--t-sm)",
-                fontWeight: isActive ? 700 : 500,
-                background: isActive ? "var(--surface)" : "transparent",
-                boxShadow: isActive ? "var(--nm-in-sm)" : "none",
-                transition: "all 0.15s",
-              })}
-            >
-              <span style={{ fontSize: "0.9rem" }}>{item.icon}</span>
-              {item.label}
-            </NavLink>
+        <nav style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+          {navGroups.map((group) => (
+            <div key={group.label}>
+              <p className="admin-nav-label">{group.label.toUpperCase()}</p>
+              {group.items.map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  end={item.end}
+                  className={({ isActive }) => "admin-nav-item" + (isActive ? " active" : "")}
+                >
+                  <span style={{ fontSize: "0.9rem" }}>{item.icon}</span>
+                  {item.label}
+                </NavLink>
+              ))}
+            </div>
           ))}
         </nav>
 
-        {/* User panel */}
-        <div
-          style={{
-            background: "var(--surface)",
-            borderRadius: "var(--radius-md)",
-            boxShadow: "var(--nm-out-sm)",
-            padding: "var(--sp-3)",
-            display: "flex",
-            flexDirection: "column",
-            gap: "var(--sp-3)",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+        <div style={{ marginTop: "auto", display: "flex", flexDirection: "column", gap: "var(--sp-3)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "0 var(--sp-3)" }}>
             <div
               style={{
-                width: 36,
-                height: 36,
-                borderRadius: "50%",
-                background: "var(--primary)",
-                color: "white",
+                width: 32,
+                height: 32,
+                borderRadius: "var(--radius-sm)",
+                background: "var(--primary-soft)",
+                color: "var(--primary)",
                 fontWeight: 700,
-                fontSize: "var(--t-sm)",
+                fontSize: "var(--t-xs)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                boxShadow: "var(--nm-out-sm)",
+                flexShrink: 0,
               }}
             >
-              {(user?.firstName?.[0] || user?.emailAddresses[0]?.emailAddress?.[0] || "?").toUpperCase()}
+              {initials}
             </div>
             <div style={{ minWidth: 0, flex: 1 }}>
               <p style={{ fontSize: "var(--t-xs)", fontWeight: 700, color: "var(--text)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
@@ -132,15 +98,19 @@ export default function AdminLayout() {
               </p>
             </div>
           </div>
-          <GlassButton size="sm" variant="ghost" fullWidth onClick={() => setShowConfirm(true)}>
+
+          <Button variant="ghost" size="sm" fullWidth onClick={() => setShowConfirm(true)}>
             Cerrar sesión
-          </GlassButton>
+          </Button>
+
+          <Link to="/" className="admin-nav-item">
+            ← Ver sitio público
+          </Link>
         </div>
       </aside>
 
-      {/* Main */}
-      <main style={{ flex: 1, marginLeft: 250, padding: "var(--sp-6) var(--sp-7)", overflowY: "auto" }}>
-        <div style={{ maxWidth: 1280, margin: "0 auto" }}>
+      <main className="admin-main">
+        <div className="admin-content">
           <Outlet />
         </div>
       </main>
@@ -151,8 +121,7 @@ export default function AdminLayout() {
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(31, 50, 80, 0.45)",
-            backdropFilter: "blur(4px)",
+            background: "rgba(31, 41, 55, 0.4)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -160,31 +129,12 @@ export default function AdminLayout() {
             padding: "var(--sp-4)",
           }}
         >
-          <div
+          <Card
+            variant="elevated"
+            padding="lg"
             onClick={(e) => e.stopPropagation()}
-            style={{
-              background: "var(--surface)",
-              borderRadius: "var(--radius-lg)",
-              boxShadow: "var(--nm-out-lg)",
-              padding: "var(--sp-6)",
-              maxWidth: 420,
-              width: "100%",
-              textAlign: "center",
-            }}
+            style={{ maxWidth: 420, width: "100%", textAlign: "center" }}
           >
-            <div style={{
-              width: 64, height: 64,
-              margin: "0 auto var(--sp-4)",
-              borderRadius: "50%",
-              background: "var(--danger-soft)",
-              color: "var(--danger)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: "1.6rem",
-              fontWeight: 700,
-              boxShadow: "var(--nm-out-sm)",
-            }}>
-              ⏻
-            </div>
             <h3 style={{ fontSize: "var(--t-lg)", color: "var(--text)", marginBottom: "var(--sp-2)" }}>
               ¿Cerrar sesión?
             </h3>
@@ -192,14 +142,14 @@ export default function AdminLayout() {
               Saldrás del backoffice. Tendrás que ingresar nuevamente para volver a administrar.
             </p>
             <div style={{ display: "flex", gap: "var(--sp-2)", justifyContent: "center" }}>
-              <GlassButton variant="ghost" onClick={() => setShowConfirm(false)}>
+              <Button variant="ghost" onClick={() => setShowConfirm(false)}>
                 Cancelar
-              </GlassButton>
-              <GlassButton variant="danger" onClick={() => signOut(() => navigate("/"))}>
+              </Button>
+              <Button variant="danger" onClick={() => signOut(() => navigate("/"))}>
                 Sí, cerrar sesión
-              </GlassButton>
+              </Button>
             </div>
-          </div>
+          </Card>
         </div>
       )}
     </div>
