@@ -91,9 +91,9 @@ export default function Countdown({ endDate, variant = "full" }: Props) {
           <div
             key={c.label}
             style={{
-              background: "var(--surface)",
+              background: "var(--bg-alt)",
+              border: "1px solid var(--border)",
               borderRadius: "var(--radius-sm)",
-              boxShadow: "var(--nm-out-sm)",
               padding: "8px 4px",
               textAlign: "center",
             }}

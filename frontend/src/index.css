@@ -331,6 +331,8 @@ h1, h2, h3, h4 {
 /* ================= UTILIDADES ================= */
 .grid-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--sp-5); }
 
+.detail-grid { display: grid; grid-template-columns: 1fr 380px; gap: var(--sp-6); }
+
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: translateY(0); }
@@ -339,6 +341,7 @@ h1, h2, h3, h4 {
 
 /* ================= RESPONSIVE ================= */
 @media (max-width: 900px) {
+  .detail-grid { grid-template-columns: 1fr; }
   .steps-row { grid-template-columns: 1fr 1fr; }
   .admin-sidebar {
     position: static; width: 100%; flex-direction: row; align-items: center;
