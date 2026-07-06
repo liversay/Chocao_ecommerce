@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useClerk, useUser } from "@clerk/react";
-import GlassButton from "./GlassButton";
+import Button from "./Button";
 
 export default function UserMenu() {
   const { signOut } = useClerk();
@@ -41,10 +41,9 @@ export default function UserMenu() {
             padding: "5px 5px 5px 14px",
             borderRadius: "var(--radius-pill)",
             background: "var(--surface)",
-            boxShadow: open ? "var(--nm-in-sm)" : "var(--nm-flat)",
-            border: "none",
+            border: "1px solid var(--border)",
             cursor: "pointer",
-            transition: "box-shadow 0.15s",
+            transition: "border-color 0.15s",
           }}
         >
           <span style={{ fontSize: "var(--t-xs)", color: "var(--text-muted)", fontWeight: 600 }}>
@@ -59,7 +58,6 @@ export default function UserMenu() {
               color: "white",
               fontSize: "var(--t-xs)",
               fontWeight: 700,
-              boxShadow: "var(--nm-out-sm)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -71,19 +69,17 @@ export default function UserMenu() {
 
         {open && (
           <div
+            className="card card-elevated"
             style={{
               position: "absolute",
               top: "calc(100% + 8px)",
               right: 0,
               minWidth: 240,
-              background: "var(--surface)",
-              boxShadow: "var(--nm-out-lg)",
-              borderRadius: "var(--radius-md)",
               padding: "var(--sp-3)",
               zIndex: 200,
             }}
           >
-            <div style={{ padding: "8px 12px", borderBottom: "1px solid var(--hairline)", marginBottom: 8 }}>
+            <div style={{ padding: "8px 12px", borderBottom: "1px solid var(--border)", marginBottom: 8 }}>
               <p style={{ fontSize: "var(--t-sm)", fontWeight: 700, color: "var(--text)" }}>{name}</p>
               <p style={{ fontSize: "var(--t-xs)", color: "var(--text-soft)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                 {email}
@@ -106,7 +102,7 @@ export default function UserMenu() {
                 alignItems: "center",
                 gap: 10,
               }}
-              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "var(--bg)"; }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "var(--bg-alt)"; }}
               onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}
             >
               ◈ Mis subastas
@@ -128,7 +124,7 @@ export default function UserMenu() {
                 alignItems: "center",
                 gap: 10,
               }}
-              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "var(--bg)"; }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "var(--bg-alt)"; }}
               onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}
             >
               ★ Mis compras
@@ -175,11 +171,10 @@ export default function UserMenu() {
           onClick={() => setShowConfirm(false)}
         >
           <div
+            className="card card-elevated"
             onClick={(e) => e.stopPropagation()}
             style={{
-              background: "var(--surface)",
               borderRadius: "var(--radius-lg)",
-              boxShadow: "var(--nm-out-lg)",
               padding: "var(--sp-6)",
               maxWidth: 420,
               width: "100%",
@@ -195,7 +190,6 @@ export default function UserMenu() {
               display: "flex", alignItems: "center", justifyContent: "center",
               fontSize: "1.6rem",
               fontWeight: 700,
-              boxShadow: "var(--nm-out-sm)",
             }}>
               ⏻
             </div>
@@ -206,12 +200,12 @@ export default function UserMenu() {
               Tendrás que ingresar nuevamente para continuar pujando o pagar subastas adjudicadas.
             </p>
             <div style={{ display: "flex", gap: "var(--sp-2)", justifyContent: "center" }}>
-              <GlassButton variant="ghost" onClick={() => setShowConfirm(false)}>
+              <Button variant="ghost" onClick={() => setShowConfirm(false)}>
                 Cancelar
-              </GlassButton>
-              <GlassButton variant="danger" onClick={handleConfirmLogout}>
+              </Button>
+              <Button variant="danger" onClick={handleConfirmLogout}>
                 Sí, cerrar sesión
-              </GlassButton>
+              </Button>
             </div>
           </div>
         </div>

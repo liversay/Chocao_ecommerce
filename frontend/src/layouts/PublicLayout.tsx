@@ -11,8 +11,8 @@ export default function PublicLayout() {
       </main>
       <footer
         style={{
-          background: "var(--bg)",
-          borderTop: "1px solid var(--hairline)",
+          background: "var(--bg-alt)",
+          borderTop: "1px solid var(--border)",
           padding: "var(--sp-6) 0 var(--sp-5)",
           marginTop: "var(--sp-7)",
         }}

@@ -1,20 +1,18 @@
 import { Link, NavLink } from "react-router-dom";
 import { useAuth } from "@clerk/react";
-import GlassButton from "./GlassButton";
+import Button from "./Button";
 import Logo from "./Logo";
 import UserMenu from "./UserMenu";
 import { useEffect, useState } from "react";
 import { useApi } from "../hooks/useApi";
 
 const navLinkStyle = (active: boolean): React.CSSProperties => ({
-  padding: "8px 16px",
-  borderRadius: "var(--radius-pill)",
+  padding: "8px 0",
   color: active ? "var(--primary)" : "var(--text-muted)",
   fontSize: "var(--t-sm)",
-  fontWeight: active ? 700 : 500,
-  background: active ? "var(--surface)" : "transparent",
-  boxShadow: active ? "var(--nm-in-sm)" : "none",
-  transition: "all 0.15s",
+  fontWeight: active ? 600 : 500,
+  borderBottom: active ? "2px solid var(--primary)" : "2px solid transparent",
+  transition: "color var(--dur), border-color var(--dur)",
 });
 
 export default function Navbar() {
@@ -33,8 +31,8 @@ export default function Navbar() {
   return (
     <nav
       style={{
-        background: "var(--bg)",
-        borderBottom: "1px solid var(--hairline)",
+        background: "var(--surface)",
+        borderBottom: "1px solid var(--border)",
         position: "sticky",
         top: 0,
         zIndex: 100,
@@ -64,16 +62,7 @@ export default function Navbar() {
             >
               Chocao
             </p>
-            <p
-              style={{
-                fontSize: "0.65rem",
-                color: "var(--text-soft)",
-                fontWeight: 600,
-                textTransform: "uppercase",
-                letterSpacing: "0.1em",
-                marginTop: 2,
-              }}
-            >
+            <p className="eyebrow" style={{ marginTop: 2 }}>
               Subastas Gov · Panamá
             </p>
           </div>
@@ -83,11 +72,8 @@ export default function Navbar() {
         <div
           style={{
             display: "flex",
-            gap: "4px",
-            background: "var(--surface)",
-            padding: "5px",
-            borderRadius: "var(--radius-pill)",
-            boxShadow: "var(--nm-in-sm)",
+            alignItems: "center",
+            gap: "var(--sp-5)",
           }}
         >
           <NavLink to="/" end style={({ isActive }) => navLinkStyle(isActive)}>
@@ -114,9 +100,9 @@ export default function Navbar() {
             <>
               {role === "admin" && (
                 <Link to="/admin">
-                  <GlassButton variant="accent" size="sm">
+                  <Button variant="secondary" size="sm">
                     Backoffice
-                  </GlassButton>
+                  </Button>
                 </Link>
               )}
               <UserMenu />
@@ -124,10 +110,10 @@ export default function Navbar() {
           ) : (
             <>
               <Link to="/login">
-                <GlassButton variant="ghost" size="sm">Ingresar</GlassButton>
+                <Button variant="ghost" size="sm">Ingresar</Button>
               </Link>
               <Link to="/register">
-                <GlassButton variant="primary" size="sm">Registrarse</GlassButton>
+                <Button variant="primary" size="sm">Registrarse</Button>
               </Link>
             </>
           )}
