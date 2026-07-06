@@ -20,25 +20,10 @@ export default function PageHeader({ title, subtitle, actions, eyebrow }: Props)
       }}
     >
       <div>
-        {eyebrow && (
-          <p
-            style={{
-              fontSize: "var(--t-xs)",
-              fontWeight: 700,
-              color: "var(--accent)",
-              textTransform: "uppercase",
-              letterSpacing: "0.1em",
-              marginBottom: "var(--sp-2)",
-            }}
-          >
-            {eyebrow}
-          </p>
-        )}
-        <h1 style={{ fontSize: "var(--t-2xl)", color: "var(--text)" }}>{title}</h1>
+        {eyebrow && <p className="eyebrow" style={{ marginBottom: "var(--sp-2)" }}>{eyebrow}</p>}
+        <h1 style={{ fontSize: "var(--t-2xl)" }}>{title}</h1>
         {subtitle && (
-          <p style={{ color: "var(--text-muted)", marginTop: 6, fontSize: "var(--t-sm)" }}>
-            {subtitle}
-          </p>
+          <p className="text-muted" style={{ marginTop: 6, fontSize: "var(--t-sm)" }}>{subtitle}</p>
         )}
       </div>
       {actions && <div style={{ display: "flex", gap: "var(--sp-3)" }}>{actions}</div>}

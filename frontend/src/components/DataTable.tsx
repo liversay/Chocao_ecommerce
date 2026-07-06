@@ -11,49 +11,22 @@ interface Props<T> {
   columns: Column<T>[];
   data: T[];
   emptyMessage?: string;
+  dense?: boolean;
 }
 
 export default function DataTable<T extends { _id?: string }>({
   columns,
   data,
   emptyMessage = "Sin datos para mostrar",
+  dense = false,
 }: Props<T>) {
   return (
-    <div
-      style={{
-        background: "var(--surface)",
-        borderRadius: "var(--radius-md)",
-        boxShadow: "var(--nm-in-sm)",
-        padding: "4px",
-        overflowX: "auto",
-      }}
-    >
-      <table
-        style={{
-          width: "100%",
-          borderCollapse: "separate",
-          borderSpacing: 0,
-          fontSize: "var(--t-sm)",
-        }}
-      >
+    <div className="table-wrap">
+      <table className={`table ${dense ? "table-dense" : ""}`}>
         <thead>
           <tr>
             {columns.map((col, i) => (
-              <th
-                key={i}
-                style={{
-                  padding: "14px 18px",
-                  textAlign: col.align || "left",
-                  color: "var(--text-muted)",
-                  fontWeight: 700,
-                  fontSize: "var(--t-xs)",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.06em",
-                  borderBottom: "1px solid var(--hairline)",
-                  width: col.width,
-                  background: "transparent",
-                }}
-              >
+              <th key={i} style={{ width: col.width, textAlign: col.align || "left" }}>
                 {col.header}
               </th>
             ))}
@@ -62,42 +35,15 @@ export default function DataTable<T extends { _id?: string }>({
         <tbody>
           {data.length === 0 ? (
             <tr>
-              <td
-                colSpan={columns.length}
-                style={{
-                  padding: "var(--sp-6)",
-                  textAlign: "center",
-                  color: "var(--text-soft)",
-                  fontSize: "var(--t-sm)",
-                }}
-              >
+              <td colSpan={columns.length} className="table-empty">
                 {emptyMessage}
               </td>
             </tr>
           ) : (
             data.map((row, ri) => (
-              <tr
-                key={row._id || ri}
-                style={{ transition: "background 0.15s" }}
-                onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLTableRowElement).style.background = "var(--bg)";
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLTableRowElement).style.background = "transparent";
-                }}
-              >
+              <tr key={row._id || ri}>
                 {columns.map((col, ci) => (
-                  <td
-                    key={ci}
-                    style={{
-                      padding: "14px 18px",
-                      color: "var(--text)",
-                      verticalAlign: "middle",
-                      textAlign: col.align || "left",
-                      borderBottom:
-                        ri === data.length - 1 ? "none" : "1px solid var(--hairline)",
-                    }}
-                  >
+                  <td key={ci} style={{ textAlign: col.align || "left" }}>
                     {typeof col.accessor === "function"
                       ? col.accessor(row)
                       : String(row[col.accessor] ?? "")}
@@ -111,5 +57,3 @@ export default function DataTable<T extends { _id?: string }>({
     </div>
   );
 }
-
-export const NeumorphicTable = DataTable;
