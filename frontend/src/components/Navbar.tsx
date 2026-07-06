@@ -22,7 +22,7 @@ export default function Navbar() {
 
   useEffect(() => {
     if (isSignedIn && isLoaded) {
-      api.get("/api/users/me").then((r) => setRole(r.data.role)).catch(() => {});
+      api.get("/api/users/me").then((r) => setRole(r.data.role)).catch(() => { });
     } else {
       setRole(null);
     }
@@ -66,7 +66,7 @@ export default function Navbar() {
               Chocao
             </p>
             <p className="eyebrow navbar-tagline" style={{ marginTop: 2 }}>
-              Subastas Gov · Panamá
+              República de Panamá
             </p>
           </div>
         </Link>
