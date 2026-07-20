@@ -6,3 +6,4 @@ import "./getVehicle";
 import "./getBidHistory";
 import "./getMyBids";
 import "./getMyPurchases";
+import "./placeBid";
