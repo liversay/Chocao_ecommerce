@@ -5,3 +5,4 @@ import "./searchVehicles";
 import "./getVehicle";
 import "./getBidHistory";
 import "./getMyBids";
+import "./getMyPurchases";

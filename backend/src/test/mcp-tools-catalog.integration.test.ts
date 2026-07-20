@@ -213,3 +213,42 @@ describe("chocao_get_my_bids (HU-51)", () => {
     expect(res.data!.bids).toEqual([]);
   });
 });
+
+describe("chocao_get_my_purchases (HU-52)", () => {
+  test("solo devuelve los bids paid del usuario, con la referencia de pago", async () => {
+    const { Payment } = await import("../models/Payment");
+    const [ana, bruno] = await Promise.all([createUser(), createUser()]);
+    const vehicle = await createVehicle();
+    const misPagada = await createBid(vehicle, ana, { amount: 12_000, status: "paid" });
+    await createBid(vehicle, ana, { amount: 9_000, status: "outbid" }); // no es compra
+    await createBid(vehicle, bruno, { amount: 20_000, status: "paid" }); // de otro usuario
+
+    await Payment.create({
+      userId: ana._id,
+      vehicleId: vehicle._id,
+      bidId: misPagada._id,
+      stripeSessionId: "cs_test_purchase",
+      amount: 12_000,
+      status: "paid",
+    });
+
+    const token = await obtainAccessToken(app, ana, "bids:read");
+    const res = await toolResult<{
+      purchases: Array<{ amount: number; vehicle: { title: string }; payment: { status: string } }>;
+    }>(await callTool(app, token, "chocao_get_my_purchases", {}));
+
+    expect(res.isError).toBeUndefined();
+    expect(res.data!.purchases.length).toBe(1);
+    expect(res.data!.purchases[0]!.amount).toBe(12_000);
+    expect(res.data!.purchases[0]!.payment.status).toBe("paid");
+  });
+
+  test("sin compras devuelve una lista vacía", async () => {
+    const user = await createUser();
+    const token = await obtainAccessToken(app, user, "bids:read");
+    const res = await toolResult<{ purchases: unknown[] }>(
+      await callTool(app, token, "chocao_get_my_purchases", {})
+    );
+    expect(res.data!.purchases).toEqual([]);
+  });
+});

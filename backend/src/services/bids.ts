@@ -1,6 +1,7 @@
 import { ConflictError, NotFoundError, ValidationError } from "../lib/errors";
 import { metrics } from "../lib/metrics";
 import { Bid } from "../models/Bid";
+import { Payment } from "../models/Payment";
 import type { UserDoc } from "../models/User";
 import { Vehicle } from "../models/Vehicle";
 import { invalidateCatalog } from "./vehicles";
@@ -137,6 +138,41 @@ export async function getMyBids(user: UserDoc) {
         currentPrice: vehicle.currentPrice,
         status: vehicle.status,
       },
+    };
+  });
+}
+
+// Compras (bids pagados) del usuario dueño del token, con referencia del
+// pago — nunca datos de otros compradores.
+export async function getMyPurchases(user: UserDoc) {
+  const bids = await Bid.find({ userId: user._id, status: "paid" })
+    .populate("vehicleId")
+    .sort({ createdAt: -1 });
+
+  const payments = await Payment.find({ bidId: { $in: bids.map((b) => b._id) } });
+  const paymentByBid = new Map(payments.map((p) => [p.bidId.toString(), p]));
+
+  return bids.map((b) => {
+    const vehicle = b.vehicleId as unknown as {
+      _id: unknown;
+      title: string;
+      brand: string;
+      model: string;
+      year: number;
+    } | null;
+    const payment = paymentByBid.get(b._id.toString());
+    return {
+      bidId: b._id.toString(),
+      amount: b.amount,
+      purchasedAt: b.createdAt,
+      vehicle: vehicle && {
+        id: vehicle._id?.toString(),
+        title: vehicle.title,
+        brand: vehicle.brand,
+        model: vehicle.model,
+        year: vehicle.year,
+      },
+      payment: payment && { id: payment._id.toString(), status: payment.status },
     };
   });
 }
