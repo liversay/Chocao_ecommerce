@@ -4,7 +4,7 @@ import { beforeAll, describe, expect, test } from "bun:test";
 import { __resetSecretForTests } from "../oauth/tokens";
 import "../mcp/tools";
 import { setupTestDB } from "./db";
-import { createUser, createVehicle } from "./factories";
+import { createBid, createUser, createVehicle } from "./factories";
 import { obtainAccessToken } from "./oauthFlow";
 import { callTool, toolResult } from "./mcpRpc";
 import { createApp } from "../app";
@@ -127,5 +127,61 @@ describe("chocao_get_vehicle (HU-48)", () => {
     );
     expect(res.isError).toBe(true);
     expect(res.content[0]!.text).toContain("Argumentos inválidos");
+  });
+});
+
+describe("chocao_get_bid_history (HU-49)", () => {
+  test("devuelve el historial ordenado por monto sin exponer identidad de los postores", async () => {
+    const vehicle = await createVehicle({ basePrice: 10_000, currentPrice: 15_000 });
+    const [ana, bruno] = await Promise.all([createUser(), createUser()]);
+    await createBid(vehicle, ana, { amount: 11_000, status: "outbid" });
+    await createBid(vehicle, bruno, { amount: 15_000, status: "active" });
+
+    const customer = await createUser();
+    const token = await obtainAccessToken(app, customer, "catalog:read");
+
+    const res = await toolResult<{
+      currentPrice: number;
+      highestBid: number;
+      bids: Array<Record<string, unknown>>;
+      total: number;
+    }>(await callTool(app, token, "chocao_get_bid_history", { vehicleId: vehicle._id.toString() }));
+
+    expect(res.isError).toBeUndefined();
+    expect(res.data!.currentPrice).toBe(15_000);
+    expect(res.data!.highestBid).toBe(15_000);
+    expect(res.data!.total).toBe(2);
+    expect(res.data!.bids[0]!.amount).toBe(15_000);
+    // Nunca se expone userId, nombre o email de quien pujó
+    for (const bid of res.data!.bids) {
+      expect(bid.userId).toBeUndefined();
+      expect(bid.name).toBeUndefined();
+      expect(bid.email).toBeUndefined();
+    }
+  });
+
+  test("un vehículo inexistente responde 404", async () => {
+    const customer = await createUser();
+    const token = await obtainAccessToken(app, customer, "catalog:read");
+    const res = await toolResult(
+      await callTool(app, token, "chocao_get_bid_history", { vehicleId: "64b5f0c8a2f4e1d9c3b7a611" })
+    );
+    expect(res.isError).toBe(true);
+    expect(res.content[0]!.text).toContain("404");
+  });
+
+  test("pagina el historial", async () => {
+    const vehicle = await createVehicle();
+    const user = await createUser();
+    for (let i = 0; i < 5; i++) {
+      await createBid(vehicle, user, { amount: 10_000 + i * 100, status: "outbid" });
+    }
+    const token = await obtainAccessToken(app, user, "catalog:read");
+
+    const res = await toolResult<{ bids: unknown[]; pages: number }>(
+      await callTool(app, token, "chocao_get_bid_history", { vehicleId: vehicle._id.toString(), limit: 2 })
+    );
+    expect(res.data!.bids.length).toBe(2);
+    expect(res.data!.pages).toBe(3);
   });
 });

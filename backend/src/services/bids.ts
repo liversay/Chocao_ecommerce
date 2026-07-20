@@ -61,3 +61,49 @@ export async function placeBid(user: UserDoc, vehicleId: string, amount: number)
   metrics.increment("chocao_bids_total");
   return { bid, currentPrice: claimed.currentPrice };
 }
+
+export interface BidHistoryEntry {
+  amount: number;
+  status: string;
+  createdAt: Date;
+}
+
+export interface BidHistoryResult {
+  currentPrice: number;
+  highestBid: number | null;
+  bids: BidHistoryEntry[];
+  total: number;
+  page: number;
+  pages: number;
+}
+
+// Historial de pujas de un vehículo, SIN exponer identidad de los postores
+// (ni userId ni nombre/email) — apto para que un agente lo muestre a
+// cualquier usuario sin filtrar PII ajena.
+export async function getBidHistory(
+  vehicleId: string,
+  { page = 1, limit = 20 }: { page?: number; limit?: number } = {}
+): Promise<BidHistoryResult> {
+  const vehicle = await Vehicle.findById(vehicleId);
+  if (!vehicle) throw new NotFoundError("Vehículo no encontrado");
+
+  const [bids, total] = await Promise.all([
+    Bid.find({ vehicleId })
+      .select("amount status createdAt")
+      .sort({ amount: -1, createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit),
+    Bid.countDocuments({ vehicleId }),
+  ]);
+
+  const highest = await Bid.findOne({ vehicleId }).sort({ amount: -1 }).select("amount");
+
+  return {
+    currentPrice: vehicle.currentPrice,
+    highestBid: highest?.amount ?? null,
+    bids: bids.map((b) => ({ amount: b.amount, status: b.status, createdAt: b.createdAt })),
+    total,
+    page,
+    pages: Math.max(1, Math.ceil(total / limit)),
+  };
+}

@@ -3,3 +3,4 @@
 // (mcp/index.ts) basta para exponer todas las tools de negocio.
 import "./searchVehicles";
 import "./getVehicle";
+import "./getBidHistory";
