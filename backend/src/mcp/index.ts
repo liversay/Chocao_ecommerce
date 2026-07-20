@@ -6,6 +6,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { attachToolHandlers } from "./registry";
 import "./governance"; // registra rate limit + auditoría por invocación (HU-60)
+import "./tools"; // registra las tools de negocio (HU-47…58)
 import { StreamableHTTPTransport } from "@hono/mcp";
 import type { Context, Next } from "hono";
 import { verifyAccessToken } from "../oauth/tokens";
