@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import type { AppEnv } from "../types";
 import { requireAuth, requirePermission } from "../middlewares/auth";
 import { rateLimit } from "../middlewares/rateLimit";
+import { metrics } from "../lib/metrics";
 import { NotFoundError, ValidationError } from "../lib/errors";
 import { idParamSchema, validate } from "../schemas/common";
 import { placeBidSchema } from "../schemas/bids";
@@ -75,6 +76,7 @@ bids.post(
     const bid = await Bid.create({ vehicleId, userId: user._id, amount, status: "active" });
     vehicle.currentPrice = amount;
     await vehicle.save();
+    metrics.increment("chocao_bids_total");
 
     return c.json(bid, 201);
   }

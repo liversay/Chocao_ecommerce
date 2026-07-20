@@ -1,5 +1,6 @@
 import type { Context, Next } from "hono";
 import { logger } from "../lib/logger";
+import { metrics } from "../lib/metrics";
 import type { AppEnv } from "../types";
 
 const REQUEST_ID_RE = /^[A-Za-z0-9_-]{8,64}$/;
@@ -19,13 +20,15 @@ export async function requestId(c: Context<AppEnv>, next: Next) {
 export async function httpLogger(c: Context<AppEnv>, next: Next) {
   const start = performance.now();
   await next();
+  const durationMs = Math.round(performance.now() - start);
+  metrics.recordHttp(c.req.method, c.res.status, durationMs);
   const user = c.get("user");
   logger.info("http", {
     requestId: c.get("requestId"),
     method: c.req.method,
     path: c.req.path,
     status: c.res.status,
-    durationMs: Math.round(performance.now() - start),
+    durationMs,
     ...(user ? { userId: user._id.toString() } : {}),
   });
 }

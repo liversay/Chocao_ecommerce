@@ -7,6 +7,7 @@ import { errorHandler } from "./lib/errors";
 import { httpLogger, requestId } from "./middlewares/logging";
 import { rateLimit } from "./middlewares/rateLimit";
 import auditRouter from "./routes/audit";
+import healthRouter from "./routes/health";
 import usersRouter from "./routes/users";
 import vehiclesRouter from "./routes/vehicles";
 import bidsRouter from "./routes/bids";
@@ -49,6 +50,7 @@ export function createApp() {
   app.use("*", rateLimit({ name: "global", max: 300 }));
 
   app.get("/", (c) => c.json({ message: "Chocao API running" }));
+  app.route("/", healthRouter);
 
   app.route("/api/users", usersRouter);
   app.route("/api/vehicles", vehiclesRouter);
