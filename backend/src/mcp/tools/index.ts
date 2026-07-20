@@ -8,3 +8,4 @@ import "./getMyBids";
 import "./getMyPurchases";
 import "./placeBid";
 import "./createCheckoutLink";
+import "./upsertVehicle";
