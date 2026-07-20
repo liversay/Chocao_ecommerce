@@ -11,3 +11,4 @@ import "./createCheckoutLink";
 import "./upsertVehicle";
 import "./setVehicleStatus";
 import "./dashboardSummary";
+import "./reports";
