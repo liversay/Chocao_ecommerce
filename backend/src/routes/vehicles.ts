@@ -58,7 +58,7 @@ vehicles.put(
   validate("json", updateVehicleSchema),
   async (c) => {
     const vehicle = await Vehicle.findByIdAndUpdate(c.req.valid("param").id, c.req.valid("json"), {
-      new: true,
+      returnDocument: "after",
     });
     if (!vehicle) throw new NotFoundError("Vehículo no encontrado");
     return c.json(vehicle);
