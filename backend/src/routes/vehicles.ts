@@ -10,7 +10,7 @@ import {
   updateVehicleSchema,
 } from "../schemas/vehicles";
 import { recordAudit } from "../services/audit";
-import { adjudicateVehicle } from "../services/auctions";
+import { setVehicleStatus } from "../services/auctions";
 import { invalidateCatalog, listVehicles } from "../services/vehicles";
 import { Vehicle } from "../models/Vehicle";
 
@@ -87,34 +87,12 @@ vehicles.patch(
   validate("json", patchVehicleStatusSchema),
   async (c) => {
     const { status } = c.req.valid("json");
-    const vehicleId = c.req.valid("param").id;
-
-    const vehicle = await Vehicle.findById(vehicleId);
-    if (!vehicle) throw new NotFoundError("Vehículo no encontrado");
-
-    const previousStatus = vehicle.status;
-    vehicle.status = status;
-    await vehicle.save();
-    invalidateCatalog();
-
-    // When the auction transitions to closed/awarded, mark the highest bid as
-    // winner and the rest as outbid (services/auctions — same logic as the
-    // automatic close job). Idempotent — safe to re-run.
-    let winnerBidId: string | undefined;
-    if (status === "closed" || status === "awarded") {
-      winnerBidId = await adjudicateVehicle(vehicleId);
-    }
-
-    await recordAudit({
-      actor: c.get("user"),
-      action: "vehicle.status.change",
-      resource: "vehicle",
-      resourceId: vehicle._id.toString(),
-      before: { status: previousStatus },
-      after: { status, ...(winnerBidId ? { winnerBidId } : {}) },
-      requestId: c.get("requestId"),
-    });
-
+    const { vehicle } = await setVehicleStatus(
+      c.get("user"),
+      c.req.valid("param").id,
+      status,
+      c.get("requestId")
+    );
     return c.json(vehicle);
   }
 );

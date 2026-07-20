@@ -9,3 +9,4 @@ import "./getMyPurchases";
 import "./placeBid";
 import "./createCheckoutLink";
 import "./upsertVehicle";
+import "./setVehicleStatus";
