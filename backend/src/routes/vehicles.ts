@@ -1,9 +1,10 @@
 import { Hono } from "hono";
+import type { AppEnv } from "../types";
 import { requireAdmin } from "../middlewares/auth";
 import { Vehicle } from "../models/Vehicle";
 import { Bid } from "../models/Bid";
 
-const vehicles = new Hono();
+const vehicles = new Hono<AppEnv>();
 
 vehicles.get("/", async (c) => {
   const { status } = c.req.query();

@@ -1,6 +1,18 @@
-import mongoose from "mongoose";
+import mongoose, { type HydratedDocument, Types } from "mongoose";
 
-const paymentSchema = new mongoose.Schema(
+export interface IPayment {
+  userId: Types.ObjectId;
+  vehicleId: Types.ObjectId;
+  bidId: Types.ObjectId;
+  stripeSessionId?: string;
+  amount: number;
+  status: "pending" | "paid" | "cancelled";
+  createdAt: Date;
+}
+
+export type PaymentDoc = HydratedDocument<IPayment>;
+
+const paymentSchema = new mongoose.Schema<IPayment>(
   {
     userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     vehicleId: { type: mongoose.Schema.Types.ObjectId, ref: "Vehicle", required: true },
@@ -12,4 +24,4 @@ const paymentSchema = new mongoose.Schema(
   { timestamps: { createdAt: "createdAt", updatedAt: false } }
 );
 
-export const Payment = mongoose.model("Payment", paymentSchema);
+export const Payment = mongoose.model<IPayment>("Payment", paymentSchema);

@@ -1,23 +1,24 @@
 import { Hono } from "hono";
+import type { AppEnv } from "../types";
 import stripe from "../lib/stripe";
 import { requireAuth } from "../middlewares/auth";
 import { Payment } from "../models/Payment";
 import { Bid } from "../models/Bid";
-import { Vehicle } from "../models/Vehicle";
+import { Vehicle, type VehicleDoc } from "../models/Vehicle";
 
-const payments = new Hono();
+const payments = new Hono<AppEnv>();
 
 payments.post("/create-checkout-session", requireAuth, async (c) => {
   const user = c.get("user");
   const { bidId } = await c.req.json();
 
-  const bid = await Bid.findById(bidId).populate("vehicleId");
+  const bid = await Bid.findById(bidId).populate<{ vehicleId: VehicleDoc }>("vehicleId");
   if (!bid) return c.json({ error: "Puja no encontrada" }, 404);
   if (bid.userId.toString() !== user._id.toString()) {
     return c.json({ error: "No tienes permisos sobre esta puja" }, 403);
   }
 
-  const vehicle = bid.vehicleId as InstanceType<typeof Vehicle>;
+  const vehicle = bid.vehicleId;
 
   const session = await stripe.checkout.sessions.create({
     // No payment_method_types — Stripe selects dynamically based on buyer location
@@ -27,8 +28,8 @@ payments.post("/create-checkout-session", requireAuth, async (c) => {
         price_data: {
           currency: "usd",
           product_data: {
-            name: (vehicle as any).title || "Vehicle Auction",
-            description: `Subasta gubernamental — ${(vehicle as any).brand} ${(vehicle as any).model} ${(vehicle as any).year}`,
+            name: vehicle.title || "Vehicle Auction",
+            description: `Subasta gubernamental — ${vehicle.brand} ${vehicle.model} ${vehicle.year}`,
           },
           unit_amount: Math.round(bid.amount * 100),
         },
@@ -41,16 +42,16 @@ payments.post("/create-checkout-session", requireAuth, async (c) => {
     metadata: {
       bidId: bid._id.toString(),
       userId: user._id.toString(),
-      vehicleId: (vehicle as any)._id.toString(),
-      vehicleTitle: (vehicle as any).title,
+      vehicleId: vehicle._id.toString(),
+      vehicleTitle: vehicle.title,
       buyerEmail: user.email,
       buyerName: user.name,
     },
     payment_intent_data: {
-      description: `Chocao · ${(vehicle as any).title} · Puja ganadora`,
+      description: `Chocao · ${vehicle.title} · Puja ganadora`,
       metadata: {
         bidId: bid._id.toString(),
-        vehicleId: (vehicle as any)._id.toString(),
+        vehicleId: vehicle._id.toString(),
         buyerEmail: user.email,
       },
     },
@@ -58,7 +59,7 @@ payments.post("/create-checkout-session", requireAuth, async (c) => {
 
   await Payment.create({
     userId: user._id,
-    vehicleId: (vehicle as any)._id,
+    vehicleId: vehicle._id,
     bidId: bid._id,
     stripeSessionId: session.id,
     amount: bid.amount,

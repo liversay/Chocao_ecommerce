@@ -1,8 +1,9 @@
 import { Hono } from "hono";
+import type { AppEnv } from "../types";
 import { requireAuth, requireAdmin } from "../middlewares/auth";
 import { User } from "../models/User";
 
-const users = new Hono();
+const users = new Hono<AppEnv>();
 
 users.get("/me", requireAuth, async (c) => {
   return c.json(c.get("user"));

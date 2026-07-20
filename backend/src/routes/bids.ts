@@ -1,9 +1,10 @@
 import { Hono } from "hono";
+import type { AppEnv } from "../types";
 import { requireAuth, requireAdmin } from "../middlewares/auth";
 import { Bid } from "../models/Bid";
 import { Vehicle } from "../models/Vehicle";
 
-const bids = new Hono();
+const bids = new Hono<AppEnv>();
 
 // Admin: all bids
 bids.get("/", requireAdmin, async (c) => {

@@ -1,8 +1,9 @@
 import { verifyToken } from "@clerk/backend";
 import type { Context, Next } from "hono";
 import { User } from "../models/User";
+import type { AppEnv } from "../types";
 
-async function getVerifiedUser(c: Context) {
+async function getVerifiedUser(c: Context<AppEnv>) {
   const authHeader = c.req.header("Authorization");
   if (!authHeader?.startsWith("Bearer ")) return null;
 
@@ -23,14 +24,14 @@ async function getVerifiedUser(c: Context) {
   }
 }
 
-export async function requireAuth(c: Context, next: Next) {
+export async function requireAuth(c: Context<AppEnv>, next: Next) {
   const user = await getVerifiedUser(c);
   if (!user) return c.json({ error: "No autorizado" }, 401);
   c.set("user", user);
   await next();
 }
 
-export async function requireAdmin(c: Context, next: Next) {
+export async function requireAdmin(c: Context<AppEnv>, next: Next) {
   const user = await getVerifiedUser(c);
   if (!user) return c.json({ error: "No autorizado" }, 401);
   if (user.role !== "admin") return c.json({ error: "Acceso restringido: solo administradores" }, 403);

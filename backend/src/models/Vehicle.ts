@@ -1,6 +1,28 @@
-import mongoose from "mongoose";
+import mongoose, { type HydratedDocument, Types } from "mongoose";
 
-const vehicleSchema = new mongoose.Schema(
+export interface IVehicle {
+  title: string;
+  brand: string;
+  model: string;
+  year: number;
+  color?: string;
+  mileage?: number;
+  condition: "excellent" | "good" | "fair" | "poor";
+  description?: string;
+  images: string[];
+  basePrice: number;
+  currentPrice: number;
+  status: "draft" | "published" | "active" | "closed" | "awarded";
+  auctionStartDate?: Date;
+  auctionEndDate?: Date;
+  createdBy?: Types.ObjectId;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export type VehicleDoc = HydratedDocument<IVehicle>;
+
+const vehicleSchema = new mongoose.Schema<IVehicle>(
   {
     title: { type: String, required: true },
     brand: { type: String, required: true },
@@ -25,4 +47,4 @@ const vehicleSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-export const Vehicle = mongoose.model("Vehicle", vehicleSchema);
+export const Vehicle = mongoose.model<IVehicle>("Vehicle", vehicleSchema);

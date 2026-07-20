@@ -1,11 +1,12 @@
 import { Hono } from "hono";
+import type { AppEnv } from "../types";
 import { requireAdmin } from "../middlewares/auth";
 import { Vehicle } from "../models/Vehicle";
 import { Bid } from "../models/Bid";
 import { User } from "../models/User";
 import { Payment } from "../models/Payment";
 
-const dashboard = new Hono();
+const dashboard = new Hono<AppEnv>();
 
 dashboard.get("/summary", requireAdmin, async (c) => {
   const [totalVehicles, totalBids, totalUsers, payments] = await Promise.all([

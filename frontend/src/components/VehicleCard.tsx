@@ -3,6 +3,7 @@ import Card from "./Card";
 import StatusBadge from "./StatusBadge";
 import Countdown from "./Countdown";
 import type { Vehicle } from "../types";
+import { CONDITION_LABELS } from "../lib/labels";
 
 interface Props {
   vehicle: Vehicle;
@@ -10,12 +11,6 @@ interface Props {
 
 const CAR_PLACEHOLDER = "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=600&q=80";
 
-export const CONDITION_LABELS: Record<string, string> = {
-  excellent: "Excelente",
-  good: "Bueno",
-  fair: "Regular",
-  poor: "Deficiente",
-};
 
 export default function VehicleCard({ vehicle }: Props) {
   const img = vehicle.images?.[0] || CAR_PLACEHOLDER;

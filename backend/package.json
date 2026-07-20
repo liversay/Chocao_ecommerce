@@ -5,21 +5,24 @@
   "private": true,
   "scripts": {
     "dev": "bun --watch src/index.ts",
-    "start": "bun src/index.ts"
+    "start": "bun src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
   },
   "devDependencies": {
     "@types/bun": "latest",
-    "baseline-browser-mapping": "^2.10.24"
+    "baseline-browser-mapping": "^2.10.44",
+    "typescript": "^5.9.3"
   },
   "peerDependencies": {
     "typescript": "^5"
   },
   "dependencies": {
-    "@clerk/backend": "^3.4.1",
-    "@hono/node-server": "^2.0.0",
+    "@clerk/backend": "^3.11.7",
+    "@hono/node-server": "^2.0.10",
     "dotenv": "^17.4.2",
-    "hono": "^4.12.15",
-    "mongoose": "^9.5.0",
-    "stripe": "^22.1.0"
+    "hono": "^4.12.31",
+    "mongoose": "^9.8.0",
+    "stripe": "^22.3.2"
   }
 }
