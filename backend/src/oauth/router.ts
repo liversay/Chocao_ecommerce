@@ -1,10 +1,11 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { createHash, randomBytes } from "node:crypto";
-import { UnauthorizedError, ValidationError } from "../lib/errors";
+import { NotFoundError, UnauthorizedError, ValidationError } from "../lib/errors";
 import { PERMISSIONS, permissionsForRole, type Permission } from "../lib/permissions";
 import { validate } from "../schemas/common";
-import { verifyClerkToken } from "../middlewares/auth";
+import { requirePermission, verifyClerkToken } from "../middlewares/auth";
+import { recordAudit } from "../services/audit";
 import { User } from "../models/User";
 import { OAuthClient, OAuthCode, RefreshToken } from "./models";
 import { issuer, signAccessToken } from "./tokens";
@@ -236,5 +237,37 @@ oauth.post("/oauth/token", async (c) => {
 
   return c.json({ error: "unsupported_grant_type" }, 400);
 });
+
+// ---------- Revocación de clientes (HU-60) ----------
+// Un admin revoca un cliente MCP comprometido: sus refresh tokens se
+// invalidan de inmediato y mcpAuth (mcp/index.ts) rechaza sus access tokens
+// vigentes en la próxima llamada — sin afectar a los demás clientes.
+oauth.post(
+  "/oauth/clients/:clientId/revoke",
+  requirePermission("mcp:manage"),
+  async (c) => {
+    const clientId = c.req.param("clientId");
+    const client = await OAuthClient.findOneAndUpdate(
+      { clientId },
+      { revoked: true },
+      { returnDocument: "after" }
+    );
+    if (!client) throw new NotFoundError("Cliente MCP no encontrado");
+
+    await RefreshToken.updateMany({ clientId, revoked: false }, { revoked: true });
+
+    await recordAudit({
+      actor: c.get("user"),
+      action: "mcp.client.revoke",
+      resource: "oauth_client",
+      resourceId: clientId,
+      before: { revoked: false },
+      after: { revoked: true },
+      requestId: c.get("requestId"),
+    });
+
+    return c.json({ revoked: true, clientId });
+  }
+);
 
 export default oauth;

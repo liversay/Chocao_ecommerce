@@ -36,7 +36,23 @@ export class MemoryRateLimitStore implements RateLimitStore {
   }
 }
 
-const defaultStore = new MemoryRateLimitStore();
+export const defaultStore = new MemoryRateLimitStore();
+
+// Variante reutilizable fuera del ciclo de vida de una request Hono (p. ej.
+// invocaciones de tools MCP, que no pasan por el middleware HTTP). Devuelve
+// si la petición debe rechazarse y los segundos de espera sugeridos.
+export function hitRateLimit(
+  key: string,
+  max: number,
+  windowMs = 60_000,
+  store: RateLimitStore = defaultStore
+): { limited: boolean; retryAfterSeconds: number } {
+  const { count, resetAt } = store.hit(key, windowMs);
+  return {
+    limited: count > max,
+    retryAfterSeconds: Math.max(1, Math.ceil((resetAt - Date.now()) / 1000)),
+  };
+}
 
 export interface RateLimitOptions {
   /** Nombre del límite: aísla los contadores por ruta/grupo. */

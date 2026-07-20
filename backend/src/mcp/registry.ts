@@ -55,6 +55,21 @@ export function onToolInvocation(hook: ToolInvocationHook) {
   beforeInvokeHooks.push(hook);
 }
 
+// Hook posterior: recibe el resultado (éxito o error) — lo usa la auditoría
+// de HU-60 para registrar qué pasó, no solo qué se intentó.
+export type ToolResultHook = (context: {
+  tool: ToolDefinition;
+  args: Record<string, unknown>;
+  auth: McpAuthInfo;
+  outcome: "ok" | "error";
+  errorMessage?: string;
+}) => Promise<void>;
+
+const afterInvokeHooks: ToolResultHook[] = [];
+export function onToolResult(hook: ToolResultHook) {
+  afterInvokeHooks.push(hook);
+}
+
 function errorResult(message: string): CallToolResult {
   return { isError: true, content: [{ type: "text", text: message }] };
 }
@@ -101,20 +116,34 @@ export function attachToolHandlers(server: Server, auth: McpAuthInfo) {
       );
     }
 
+    const args = parsed.data as Record<string, unknown>;
+    let outcome: "ok" | "error" = "ok";
+    let errorMessage: string | undefined;
+
     try {
       for (const hook of beforeInvokeHooks) {
-        await hook({ tool, args: parsed.data as Record<string, unknown>, auth });
+        // Un hook (p. ej. rate limit) puede vetar la invocación lanzando AppError
+        await hook({ tool, args, auth });
       }
-      const result = await tool.handler(parsed.data, auth);
+      const result = await tool.handler(args, auth);
       return okResult(result);
     } catch (err) {
-      if (err instanceof AppError) return errorResult(`${err.status}: ${err.message}`);
+      outcome = "error";
+      if (err instanceof AppError) {
+        errorMessage = `${err.status}: ${err.message}`;
+        return errorResult(errorMessage);
+      }
+      errorMessage = err instanceof Error ? err.message : String(err);
       logger.error("tool MCP falló", {
         tool: tool.name,
         userId: auth.user._id.toString(),
-        error: err instanceof Error ? err.message : String(err),
+        error: errorMessage,
       });
       return errorResult("Error interno al ejecutar la tool");
+    } finally {
+      for (const hook of afterInvokeHooks) {
+        await hook({ tool, args, auth, outcome, errorMessage });
+      }
     }
   });
 }

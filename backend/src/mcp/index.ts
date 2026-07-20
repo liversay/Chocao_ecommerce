@@ -5,10 +5,12 @@ import {
   ListResourcesRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { attachToolHandlers } from "./registry";
+import "./governance"; // registra rate limit + auditoría por invocación (HU-60)
 import { StreamableHTTPTransport } from "@hono/mcp";
 import type { Context, Next } from "hono";
 import { verifyAccessToken } from "../oauth/tokens";
 import { issuer } from "../oauth/tokens";
+import { OAuthClient } from "../oauth/models";
 import { User } from "../models/User";
 import type { AppEnv, McpAuthInfo } from "../types";
 import type { Permission } from "../lib/permissions";
@@ -32,6 +34,12 @@ export async function mcpAuth(c: Context<AppEnv>, next: Next) {
 
   const claims = await verifyAccessToken(header.slice(7));
   if (!claims) return unauthorized();
+
+  // Revocación (HU-60): un cliente marcado como comprometido deja de poder
+  // usar sus tokens de inmediato, sin esperar a que expiren (TTL 1h) y sin
+  // afectar a los demás clientes.
+  const client = await OAuthClient.findOne({ clientId: claims.client_id });
+  if (!client || client.revoked) return unauthorized();
 
   const user = await User.findById(claims.sub);
   if (!user) return unauthorized();

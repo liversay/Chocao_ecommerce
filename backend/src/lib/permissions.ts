@@ -14,6 +14,7 @@ export const PERMISSIONS = [
   "report:read", // reportes y actividad global (todas las pujas)
   "users:manage", // cambiar roles de usuarios
   "audit:read", // consultar el registro de auditoría
+  "mcp:manage", // revocar clientes MCP comprometidos (HU-60)
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
