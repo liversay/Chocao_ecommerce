@@ -1,5 +1,6 @@
 import { verifyToken } from "@clerk/backend";
 import type { Context, Next } from "hono";
+import { checkPermission, type Permission } from "../lib/permissions";
 import { User } from "../models/User";
 import type { AppEnv } from "../types";
 
@@ -43,4 +44,17 @@ export async function requireAdmin(c: Context<AppEnv>, next: Next) {
   if (user.role !== "admin") return c.json({ error: "Acceso restringido: solo administradores" }, 403);
   c.set("user", user);
   await next();
+}
+
+// RBAC de grano fino: cada endpoint exige el permiso concreto, no "ser admin".
+export function requirePermission(permission: Permission) {
+  return async (c: Context<AppEnv>, next: Next) => {
+    const user = await getVerifiedUser(c);
+    if (!user) return c.json({ error: "No autorizado" }, 401);
+    if (!checkPermission(user, permission)) {
+      return c.json({ error: `No tienes el permiso requerido (${permission})` }, 403);
+    }
+    c.set("user", user);
+    await next();
+  };
 }

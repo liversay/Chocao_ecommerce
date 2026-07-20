@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import type { AppEnv } from "../types";
-import { requireAuth, requireAdmin } from "../middlewares/auth";
+import { requireAuth, requirePermission } from "../middlewares/auth";
 import { NotFoundError, ValidationError } from "../lib/errors";
 import { idParamSchema, validate } from "../schemas/common";
 import { placeBidSchema } from "../schemas/bids";
@@ -10,7 +10,7 @@ import { Vehicle } from "../models/Vehicle";
 const bids = new Hono<AppEnv>();
 
 // Admin: all bids
-bids.get("/", requireAdmin, async (c) => {
+bids.get("/", requirePermission("report:read"), async (c) => {
   const list = await Bid.find().populate("vehicleId userId").sort({ createdAt: -1 });
   return c.json(list);
 });

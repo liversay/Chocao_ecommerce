@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import type { AppEnv } from "../types";
-import { requireAdmin } from "../middlewares/auth";
+import { requirePermission } from "../middlewares/auth";
 import { NotFoundError } from "../lib/errors";
 import { idParamSchema, validate } from "../schemas/common";
 import {
@@ -27,7 +27,7 @@ vehicles.get("/", validate("query", listVehiclesQuerySchema), async (c) => {
 });
 
 // Admin-only: all vehicles including draft
-vehicles.get("/admin/all", requireAdmin, async (c) => {
+vehicles.get("/admin/all", requirePermission("vehicle:write"), async (c) => {
   const list = await Vehicle.find().sort({ createdAt: -1 });
   return c.json(list);
 });
@@ -38,7 +38,7 @@ vehicles.get("/:id", validate("param", idParamSchema), async (c) => {
   return c.json(vehicle);
 });
 
-vehicles.post("/", requireAdmin, validate("json", createVehicleSchema), async (c) => {
+vehicles.post("/", requirePermission("vehicle:write"), validate("json", createVehicleSchema), async (c) => {
   const body = c.req.valid("json");
   const admin = c.get("user");
 
@@ -52,7 +52,7 @@ vehicles.post("/", requireAdmin, validate("json", createVehicleSchema), async (c
 
 vehicles.put(
   "/:id",
-  requireAdmin,
+  requirePermission("vehicle:write"),
   validate("param", idParamSchema),
   validate("json", updateVehicleSchema),
   async (c) => {
@@ -64,7 +64,7 @@ vehicles.put(
   }
 );
 
-vehicles.delete("/:id", requireAdmin, validate("param", idParamSchema), async (c) => {
+vehicles.delete("/:id", requirePermission("vehicle:write"), validate("param", idParamSchema), async (c) => {
   const vehicle = await Vehicle.findByIdAndDelete(c.req.valid("param").id);
   if (!vehicle) throw new NotFoundError("Vehículo no encontrado");
   return c.json({ message: "Vehículo eliminado" });
@@ -72,7 +72,7 @@ vehicles.delete("/:id", requireAdmin, validate("param", idParamSchema), async (c
 
 vehicles.patch(
   "/:id/status",
-  requireAdmin,
+  requirePermission("vehicle:write"),
   validate("param", idParamSchema),
   validate("json", patchVehicleStatusSchema),
   async (c) => {

@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import type { AppEnv } from "../types";
-import { requireAdmin } from "../middlewares/auth";
+import { requirePermission } from "../middlewares/auth";
 import { Vehicle } from "../models/Vehicle";
 import { Bid } from "../models/Bid";
 import { User } from "../models/User";
@@ -8,7 +8,7 @@ import { Payment } from "../models/Payment";
 
 const dashboard = new Hono<AppEnv>();
 
-dashboard.get("/summary", requireAdmin, async (c) => {
+dashboard.get("/summary", requirePermission("dashboard:read"), async (c) => {
   const [totalVehicles, totalBids, totalUsers, payments] = await Promise.all([
     Vehicle.countDocuments(),
     Bid.countDocuments(),
@@ -30,7 +30,7 @@ dashboard.get("/summary", requireAdmin, async (c) => {
   });
 });
 
-dashboard.get("/reports", requireAdmin, async (c) => {
+dashboard.get("/reports", requirePermission("report:read"), async (c) => {
   const vehiclesByStatus = await Vehicle.aggregate([
     { $group: { _id: "$status", count: { $sum: 1 } } },
   ]);

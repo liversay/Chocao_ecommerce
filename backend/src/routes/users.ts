@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import type { AppEnv } from "../types";
-import { requireAuth, requireAdmin, verifyClerkToken } from "../middlewares/auth";
+import { requireAuth, requirePermission, verifyClerkToken } from "../middlewares/auth";
 import { NotFoundError, UnauthorizedError } from "../lib/errors";
 import { idParamSchema, validate } from "../schemas/common";
 import { patchRoleSchema, syncUserSchema } from "../schemas/users";
@@ -39,7 +39,7 @@ users.post("/sync", validate("json", syncUserSchema), async (c) => {
 
 users.patch(
   "/:id/role",
-  requireAdmin,
+  requirePermission("users:manage"),
   validate("param", idParamSchema),
   validate("json", patchRoleSchema),
   async (c) => {
