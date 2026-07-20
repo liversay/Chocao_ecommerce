@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import type { AppEnv } from "../types";
 import { requireAuth, requirePermission } from "../middlewares/auth";
+import { rateLimit } from "../middlewares/rateLimit";
 import { NotFoundError, ValidationError } from "../lib/errors";
 import { idParamSchema, validate } from "../schemas/common";
 import { placeBidSchema } from "../schemas/bids";
@@ -45,6 +46,8 @@ bids.get("/vehicle/:id", validate("param", idParamSchema), async (c) => {
 bids.post(
   "/vehicle/:id",
   requireAuth,
+  // tras requireAuth el límite es por usuario, no por IP
+  rateLimit({ name: "place-bid", max: 15 }),
   validate("param", idParamSchema),
   validate("json", placeBidSchema),
   async (c) => {

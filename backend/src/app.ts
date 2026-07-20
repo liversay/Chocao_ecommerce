@@ -5,6 +5,7 @@ import { secureHeaders } from "hono/secure-headers";
 
 import { errorHandler } from "./lib/errors";
 import { httpLogger, requestId } from "./middlewares/logging";
+import { rateLimit } from "./middlewares/rateLimit";
 import auditRouter from "./routes/audit";
 import usersRouter from "./routes/users";
 import vehiclesRouter from "./routes/vehicles";
@@ -44,6 +45,8 @@ export function createApp() {
       onError: (c) => c.json({ error: "El cuerpo de la petición supera el tamaño permitido" }, 413),
     })
   );
+  // Límite global por IP; las rutas sensibles añaden límites más estrictos.
+  app.use("*", rateLimit({ name: "global", max: 300 }));
 
   app.get("/", (c) => c.json({ message: "Chocao API running" }));
 

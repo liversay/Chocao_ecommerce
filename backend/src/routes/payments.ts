@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import type { AppEnv } from "../types";
 import stripe from "../lib/stripe";
 import { requireAuth } from "../middlewares/auth";
+import { rateLimit } from "../middlewares/rateLimit";
 import { NotFoundError } from "../lib/errors";
 import { assertOwner } from "../lib/ownership";
 import { validate } from "../schemas/common";
@@ -12,7 +13,7 @@ import { Vehicle, type VehicleDoc } from "../models/Vehicle";
 
 const payments = new Hono<AppEnv>();
 
-payments.post("/create-checkout-session", requireAuth, validate("json", createCheckoutSchema), async (c) => {
+payments.post("/create-checkout-session", requireAuth, rateLimit({ name: "checkout", max: 5 }), validate("json", createCheckoutSchema), async (c) => {
   const user = c.get("user");
   const { bidId } = c.req.valid("json");
 

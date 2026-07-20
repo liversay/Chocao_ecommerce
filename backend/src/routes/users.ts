@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import type { AppEnv } from "../types";
 import { requireAuth, requirePermission, verifyClerkToken } from "../middlewares/auth";
+import { rateLimit } from "../middlewares/rateLimit";
 import { NotFoundError, UnauthorizedError } from "../lib/errors";
 import { idParamSchema, validate } from "../schemas/common";
 import { patchRoleSchema, syncUserSchema } from "../schemas/users";
@@ -15,7 +16,7 @@ users.get("/me", requireAuth, async (c) => {
 
 // Sincroniza el usuario de Clerk en Mongo. Exige un token válido de Clerk y
 // toma el clerkId del token (nunca del body) para impedir suplantaciones.
-users.post("/sync", validate("json", syncUserSchema), async (c) => {
+users.post("/sync", rateLimit({ name: "sync", max: 20 }), validate("json", syncUserSchema), async (c) => {
   const payload = await verifyClerkToken(c);
   if (!payload) throw new UnauthorizedError();
 
