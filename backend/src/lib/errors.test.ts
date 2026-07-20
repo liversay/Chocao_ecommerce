@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { Hono } from "hono";
+import type { AppEnv } from "../types";
 import {
   AppError,
   ConflictError,
@@ -11,7 +12,7 @@ import {
 } from "./errors";
 
 function appWith(error: Error) {
-  const app = new Hono();
+  const app = new Hono<AppEnv>();
   app.onError(errorHandler);
   app.get("/boom", () => {
     throw error;

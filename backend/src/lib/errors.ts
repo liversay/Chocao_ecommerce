@@ -1,5 +1,7 @@
 import type { Context } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
+import { logger } from "./logger";
+import type { AppEnv } from "../types";
 
 // Errores de dominio: cualquier capa (rutas, servicios, tools MCP) los lanza
 // y el handler global los convierte en la respuesta { error } con su status.
@@ -45,10 +47,15 @@ export class ConflictError extends AppError {
 
 // Handler global: los AppError devuelven su mensaje; el resto se loguea y
 // responde 500 genérico sin filtrar stack traces ni detalles internos.
-export function errorHandler(err: Error, c: Context) {
+export function errorHandler(err: Error, c: Context<AppEnv>) {
   if (err instanceof AppError) {
     return c.json({ error: err.message }, err.status);
   }
-  console.error("[error] no controlado:", err);
+  logger.error("error no controlado", {
+    requestId: c.get("requestId"),
+    path: c.req.path,
+    error: err.message,
+    stack: err.stack,
+  });
   return c.json({ error: "Error interno del servidor" }, 500);
 }

@@ -1,8 +1,9 @@
 import type { UserDoc } from "./models/User";
 
-// Variables que los middlewares de auth dejan en el contexto de Hono.
+// Variables que los middlewares dejan en el contexto de Hono.
 export type AppEnv = {
   Variables: {
     user: UserDoc;
+    requestId: string;
   };
 };

@@ -6,6 +6,8 @@ const api = axios.create({
 
 api.interceptors.request.use(async (config) => {
   // Token is injected by useApiToken hook or per-call
+  // Correlación frontend ↔ backend: el backend devuelve/loguea este mismo id.
+  config.headers["X-Request-Id"] = crypto.randomUUID();
   return config;
 });
 
