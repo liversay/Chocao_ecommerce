@@ -11,20 +11,16 @@ import {
 } from "../schemas/vehicles";
 import { recordAudit } from "../services/audit";
 import { adjudicateVehicle } from "../services/auctions";
+import { invalidateCatalog, listVehicles } from "../services/vehicles";
 import { Vehicle } from "../models/Vehicle";
 
 const vehicles = new Hono<AppEnv>();
 
+// Catálogo público paginado con filtros indexados y caché (services/vehicles).
+// Los borradores nunca se exponen aquí (includeDrafts solo en flujos admin).
 vehicles.get("/", validate("query", listVehiclesQuerySchema), async (c) => {
-  const { status } = c.req.valid("query");
-  const filter: Record<string, unknown> = {};
-  if (!status || status === "all") {
-    filter.status = { $in: ["published", "active", "closed", "awarded"] };
-  } else {
-    filter.status = status;
-  }
-  const list = await Vehicle.find(filter).sort({ createdAt: -1 });
-  return c.json(list);
+  const result = await listVehicles({ ...c.req.valid("query"), includeDrafts: false });
+  return c.json(result);
 });
 
 // Admin-only: all vehicles including draft
@@ -48,6 +44,7 @@ vehicles.post("/", requirePermission("vehicle:write"), validate("json", createVe
     currentPrice: body.basePrice,
     createdBy: admin._id,
   });
+  invalidateCatalog();
   return c.json(vehicle, 201);
 });
 
@@ -61,6 +58,7 @@ vehicles.put(
       returnDocument: "after",
     });
     if (!vehicle) throw new NotFoundError("Vehículo no encontrado");
+    invalidateCatalog();
     return c.json(vehicle);
   }
 );
@@ -68,6 +66,7 @@ vehicles.put(
 vehicles.delete("/:id", requirePermission("vehicle:write"), validate("param", idParamSchema), async (c) => {
   const vehicle = await Vehicle.findByIdAndDelete(c.req.valid("param").id);
   if (!vehicle) throw new NotFoundError("Vehículo no encontrado");
+  invalidateCatalog();
 
   await recordAudit({
     actor: c.get("user"),
@@ -96,6 +95,7 @@ vehicles.patch(
     const previousStatus = vehicle.status;
     vehicle.status = status;
     await vehicle.save();
+    invalidateCatalog();
 
     // When the auction transitions to closed/awarded, mark the highest bid as
     // winner and the rest as outbid (services/auctions — same logic as the

@@ -2,6 +2,7 @@ import { logger } from "../lib/logger";
 import { Bid } from "../models/Bid";
 import { Vehicle } from "../models/Vehicle";
 import { recordAudit } from "./audit";
+import { invalidateCatalog } from "./vehicles";
 import type { UserDoc } from "../models/User";
 
 // Adjudicación: la puja más alta del vehículo queda winner y el resto outbid.
@@ -38,6 +39,7 @@ export async function closeExpiredAuctions(actor?: UserDoc): Promise<number> {
     if (!vehicle) break;
 
     const winnerBidId = await adjudicateVehicle(vehicle._id.toString());
+    invalidateCatalog();
     closed += 1;
 
     await recordAudit({

@@ -36,6 +36,7 @@ export default function VehicleCard({ vehicle }: Props) {
           }}
         >
           <img
+            loading="lazy"
             src={img}
             alt={vehicle.title}
             style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center", display: "block" }}

@@ -3,6 +3,7 @@ import { metrics } from "../lib/metrics";
 import { Bid } from "../models/Bid";
 import type { UserDoc } from "../models/User";
 import { Vehicle } from "../models/Vehicle";
+import { invalidateCatalog } from "./vehicles";
 
 // Registra una puja con control de concurrencia optimista. La reutilizan la
 // ruta HTTP y (más adelante) la tool MCP chocao_place_bid — toda la regla de
@@ -56,6 +57,7 @@ export async function placeBid(user: UserDoc, vehicleId: string, amount: number)
     );
   }
 
+  invalidateCatalog();
   metrics.increment("chocao_bids_total");
   return { bid, currentPrice: claimed.currentPrice };
 }
