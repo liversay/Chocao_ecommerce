@@ -2,12 +2,10 @@ import { Hono } from "hono";
 import type { AppEnv } from "../types";
 import { requireAuth, requirePermission } from "../middlewares/auth";
 import { rateLimit } from "../middlewares/rateLimit";
-import { metrics } from "../lib/metrics";
-import { NotFoundError, ValidationError } from "../lib/errors";
 import { idParamSchema, validate } from "../schemas/common";
 import { placeBidSchema } from "../schemas/bids";
+import { placeBid } from "../services/bids";
 import { Bid } from "../models/Bid";
-import { Vehicle } from "../models/Vehicle";
 
 const bids = new Hono<AppEnv>();
 
@@ -43,7 +41,8 @@ bids.get("/vehicle/:id", validate("param", idParamSchema), async (c) => {
   return c.json(list);
 });
 
-// Place a bid
+// Place a bid — la regla de negocio y el control de concurrencia viven en
+// services/bids.placeBid
 bids.post(
   "/vehicle/:id",
   requireAuth,
@@ -52,32 +51,7 @@ bids.post(
   validate("param", idParamSchema),
   validate("json", placeBidSchema),
   async (c) => {
-    const user = c.get("user");
-    const vehicleId = c.req.valid("param").id;
-    const { amount } = c.req.valid("json");
-
-    const vehicle = await Vehicle.findById(vehicleId);
-    if (!vehicle) throw new NotFoundError("Vehículo no encontrado");
-    if (vehicle.status !== "active") {
-      throw new ValidationError("Este vehículo no está abierto para pujas en este momento");
-    }
-    if (vehicle.auctionEndDate && new Date(vehicle.auctionEndDate) < new Date()) {
-      throw new ValidationError("La subasta ya finalizó; no se aceptan más pujas");
-    }
-    if (amount <= vehicle.currentPrice) {
-      throw new ValidationError(
-        `Tu puja debe ser mayor a la oferta actual ($${vehicle.currentPrice.toLocaleString()})`
-      );
-    }
-
-    // Mark previous winning bid as outbid
-    await Bid.updateMany({ vehicleId, status: "active" }, { status: "outbid" });
-
-    const bid = await Bid.create({ vehicleId, userId: user._id, amount, status: "active" });
-    vehicle.currentPrice = amount;
-    await vehicle.save();
-    metrics.increment("chocao_bids_total");
-
+    const { bid } = await placeBid(c.get("user"), c.req.valid("param").id, c.req.valid("json").amount);
     return c.json(bid, 201);
   }
 );
