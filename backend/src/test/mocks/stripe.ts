@@ -1,4 +1,9 @@
 import { mock } from "bun:test";
+import Stripe from "stripe";
+
+// Instancia real SOLO para las utilidades de webhooks (firma/verificación);
+// no hace llamadas de red y la clave es un dummy.
+const realStripeForWebhooks = new Stripe("sk_test_dummy", { apiVersion: "2026-06-24.dahlia" });
 
 interface FakeSession {
   id: string;
@@ -13,6 +18,9 @@ const sessions = new Map<string, FakeSession>();
 let counter = 0;
 
 export const stripeMock = {
+  // Verificación de firma REAL del SDK: los tests de webhook firman con
+  // generateTestHeaderString y el endpoint valida de verdad.
+  webhooks: realStripeForWebhooks.webhooks,
   checkout: {
     sessions: {
       create: mock(async (params: { metadata?: Record<string, string> }) => {

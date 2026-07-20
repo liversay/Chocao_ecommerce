@@ -1,4 +1,5 @@
 [test]
+preload = ["./src/test/preload.ts"]
 # Bun aplica coverageThreshold POR ARCHIVO, no como agregado: con un umbral
 # global fijo, cualquier archivo individual por debajo (p. ej. una ruta que
 # quedó de capa fina tras extraer su lógica a services/*) tumba `bun test
