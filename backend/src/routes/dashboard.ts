@@ -1,52 +1,19 @@
 import { Hono } from "hono";
 import type { AppEnv } from "../types";
 import { requirePermission } from "../middlewares/auth";
-import { Vehicle } from "../models/Vehicle";
-import { Bid } from "../models/Bid";
-import { User } from "../models/User";
-import { Payment } from "../models/Payment";
+import { validate } from "../schemas/common";
+import { reportsQuerySchema } from "../schemas/dashboard";
+import { getDashboardSummary, getReports } from "../services/dashboard";
 
 const dashboard = new Hono<AppEnv>();
 
 dashboard.get("/summary", requirePermission("dashboard:read"), async (c) => {
-  const [totalVehicles, totalBids, totalUsers, payments] = await Promise.all([
-    Vehicle.countDocuments(),
-    Bid.countDocuments(),
-    User.countDocuments(),
-    Payment.find({ status: "paid" }),
-  ]);
-
-  const totalRevenue = payments.reduce((sum, p) => sum + p.amount, 0);
-  const activeAuctions = await Vehicle.countDocuments({ status: "active" });
-  const awardedVehicles = await Vehicle.countDocuments({ status: "awarded" });
-
-  return c.json({
-    totalVehicles,
-    totalBids,
-    totalUsers,
-    totalRevenue,
-    activeAuctions,
-    awardedVehicles,
-  });
+  return c.json(await getDashboardSummary());
 });
 
-dashboard.get("/reports", requirePermission("report:read"), async (c) => {
-  const vehiclesByStatus = await Vehicle.aggregate([
-    { $group: { _id: "$status", count: { $sum: 1 } } },
-  ]);
-
-  const topBids = await Bid.find()
-    .populate("vehicleId", "title brand model")
-    .populate("userId", "name email")
-    .sort({ amount: -1 })
-    .limit(10);
-
-  const recentVehicles = await Vehicle.find()
-    .sort({ createdAt: -1 })
-    .limit(5)
-    .select("title brand model status currentPrice createdAt");
-
-  return c.json({ vehiclesByStatus, topBids, recentVehicles });
+dashboard.get("/reports", requirePermission("report:read"), validate("query", reportsQuerySchema), async (c) => {
+  const { from, to } = c.req.valid("query");
+  return c.json(await getReports({ from, to }));
 });
 
 export default dashboard;

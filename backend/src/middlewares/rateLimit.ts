@@ -34,6 +34,11 @@ export class MemoryRateLimitStore implements RateLimitStore {
       if (window.resetAt <= now) this.windows.delete(key);
     }
   }
+
+  /** Solo para tests: limpia todos los contadores. */
+  reset() {
+    this.windows.clear();
+  }
 }
 
 export const defaultStore = new MemoryRateLimitStore();
