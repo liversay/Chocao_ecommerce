@@ -2,6 +2,8 @@ import { Hono } from "hono";
 import type { AppEnv } from "../types";
 import stripe from "../lib/stripe";
 import { requireAuth } from "../middlewares/auth";
+import { NotFoundError } from "../lib/errors";
+import { assertOwner } from "../lib/ownership";
 import { validate } from "../schemas/common";
 import { checkoutSuccessQuerySchema, createCheckoutSchema } from "../schemas/payments";
 import { Payment } from "../models/Payment";
@@ -15,10 +17,8 @@ payments.post("/create-checkout-session", requireAuth, validate("json", createCh
   const { bidId } = c.req.valid("json");
 
   const bid = await Bid.findById(bidId).populate<{ vehicleId: VehicleDoc }>("vehicleId");
-  if (!bid) return c.json({ error: "Puja no encontrada" }, 404);
-  if (bid.userId.toString() !== user._id.toString()) {
-    return c.json({ error: "No tienes permisos sobre esta puja" }, 403);
-  }
+  if (!bid) throw new NotFoundError("Puja no encontrada");
+  assertOwner(bid.userId, user, "No tienes permisos sobre esta puja");
 
   const vehicle = bid.vehicleId;
 
@@ -74,14 +74,15 @@ payments.post("/create-checkout-session", requireAuth, validate("json", createCh
 payments.get("/success", requireAuth, validate("query", checkoutSuccessQuerySchema), async (c) => {
   const { session_id } = c.req.valid("query");
 
+  // Solo el dueño del pago puede confirmarlo/consultarlo (403, no 404 con datos)
+  const payment = await Payment.findOne({ stripeSessionId: session_id });
+  if (payment) assertOwner(payment.userId, c.get("user"), "No tienes permisos sobre este pago");
+
   const session = await stripe.checkout.sessions.retrieve(session_id);
   if (session.payment_status === "paid") {
-    const payment = await Payment.findOneAndUpdate(
-      { stripeSessionId: session_id },
-      { status: "paid" },
-      { new: true }
-    );
-    if (payment) {
+    if (payment && payment.status !== "paid") {
+      payment.status = "paid";
+      await payment.save();
       // Bid transitions from "winner" → "paid" once the user completes the checkout
       await Bid.findByIdAndUpdate(payment.bidId, { status: "paid" });
       await Vehicle.findByIdAndUpdate(payment.vehicleId, { status: "awarded" });
