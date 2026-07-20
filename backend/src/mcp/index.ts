@@ -3,8 +3,8 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import {
   ListPromptsRequestSchema,
   ListResourcesRequestSchema,
-  ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
+import { attachToolHandlers } from "./registry";
 import { StreamableHTTPTransport } from "@hono/mcp";
 import type { Context, Next } from "hono";
 import { verifyAccessToken } from "../oauth/tokens";
@@ -50,7 +50,7 @@ export async function mcpAuth(c: Context<AppEnv>, next: Next) {
 
 // Construye el servidor MCP para una sesión autenticada. Las tools/resources
 // se registran en los PRs de HU-47…HU-58 vía el registry (HU-59).
-export function buildMcpServer(_auth: McpAuthInfo): McpServer {
+export function buildMcpServer(auth: McpAuthInfo): McpServer {
   const server = new McpServer(
     { name: "chocao", version: "1.0.0" },
     { instructions: "Servidor MCP de Chocao — subastas de vehículos del gobierno de Panamá." }
@@ -63,7 +63,8 @@ export function buildMcpServer(_auth: McpAuthInfo): McpServer {
     resources: { listChanged: true },
     prompts: { listChanged: true },
   });
-  server.server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: [] }));
+  // tools/list y tools/call con gating por scope∩rol (registry, HU-59)
+  attachToolHandlers(server.server, auth);
   server.server.setRequestHandler(ListResourcesRequestSchema, async () => ({ resources: [] }));
   server.server.setRequestHandler(ListPromptsRequestSchema, async () => ({ prompts: [] }));
   return server;
