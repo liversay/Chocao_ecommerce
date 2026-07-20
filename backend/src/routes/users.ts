@@ -4,6 +4,7 @@ import { requireAuth, requirePermission, verifyClerkToken } from "../middlewares
 import { NotFoundError, UnauthorizedError } from "../lib/errors";
 import { idParamSchema, validate } from "../schemas/common";
 import { patchRoleSchema, syncUserSchema } from "../schemas/users";
+import { recordAudit } from "../services/audit";
 import { User } from "../models/User";
 
 const users = new Hono<AppEnv>();
@@ -46,8 +47,23 @@ users.patch(
     const { id } = c.req.valid("param");
     const { role } = c.req.valid("json");
 
-    const user = await User.findByIdAndUpdate(id, { role }, { new: true });
+    const user = await User.findById(id);
     if (!user) throw new NotFoundError("Usuario no encontrado");
+
+    const previousRole = user.role;
+    user.role = role;
+    await user.save();
+
+    await recordAudit({
+      actor: c.get("user"),
+      action: "user.role.change",
+      resource: "user",
+      resourceId: user._id.toString(),
+      before: { role: previousRole },
+      after: { role },
+      requestId: c.get("requestId"),
+    });
+
     return c.json(user);
   }
 );

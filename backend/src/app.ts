@@ -5,6 +5,7 @@ import { secureHeaders } from "hono/secure-headers";
 
 import { errorHandler } from "./lib/errors";
 import { httpLogger, requestId } from "./middlewares/logging";
+import auditRouter from "./routes/audit";
 import usersRouter from "./routes/users";
 import vehiclesRouter from "./routes/vehicles";
 import bidsRouter from "./routes/bids";
@@ -51,6 +52,7 @@ export function createApp() {
   app.route("/api/bids", bidsRouter);
   app.route("/api/payments", paymentsRouter);
   app.route("/api/dashboard", dashboardRouter);
+  app.route("/api/audit", auditRouter);
 
   app.notFound((c) => c.json({ error: "Recurso no encontrado" }, 404));
   app.onError(errorHandler);

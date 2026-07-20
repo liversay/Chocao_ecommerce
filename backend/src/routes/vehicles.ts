@@ -9,6 +9,7 @@ import {
   patchVehicleStatusSchema,
   updateVehicleSchema,
 } from "../schemas/vehicles";
+import { recordAudit } from "../services/audit";
 import { Vehicle } from "../models/Vehicle";
 import { Bid } from "../models/Bid";
 
@@ -67,6 +68,16 @@ vehicles.put(
 vehicles.delete("/:id", requirePermission("vehicle:write"), validate("param", idParamSchema), async (c) => {
   const vehicle = await Vehicle.findByIdAndDelete(c.req.valid("param").id);
   if (!vehicle) throw new NotFoundError("Vehículo no encontrado");
+
+  await recordAudit({
+    actor: c.get("user"),
+    action: "vehicle.delete",
+    resource: "vehicle",
+    resourceId: vehicle._id.toString(),
+    before: { title: vehicle.title, status: vehicle.status, currentPrice: vehicle.currentPrice },
+    requestId: c.get("requestId"),
+  });
+
   return c.json({ message: "Vehículo eliminado" });
 });
 
@@ -79,11 +90,16 @@ vehicles.patch(
     const { status } = c.req.valid("json");
     const vehicleId = c.req.valid("param").id;
 
-    const vehicle = await Vehicle.findByIdAndUpdate(vehicleId, { status }, { new: true });
+    const vehicle = await Vehicle.findById(vehicleId);
     if (!vehicle) throw new NotFoundError("Vehículo no encontrado");
+
+    const previousStatus = vehicle.status;
+    vehicle.status = status;
+    await vehicle.save();
 
     // When the auction transitions to closed/awarded, mark the highest bid as winner
     // and the rest as outbid. Idempotent — safe to re-run if the admin toggles status.
+    let winnerBidId: string | undefined;
     if (status === "closed" || status === "awarded") {
       const highestBid = await Bid.findOne({ vehicleId }).sort({ amount: -1 });
 
@@ -96,8 +112,19 @@ vehicles.patch(
         // The highest one is the winner
         highestBid.status = "winner";
         await highestBid.save();
+        winnerBidId = highestBid._id.toString();
       }
     }
+
+    await recordAudit({
+      actor: c.get("user"),
+      action: "vehicle.status.change",
+      resource: "vehicle",
+      resourceId: vehicle._id.toString(),
+      before: { status: previousStatus },
+      after: { status, ...(winnerBidId ? { winnerBidId } : {}) },
+      requestId: c.get("requestId"),
+    });
 
     return c.json(vehicle);
   }
