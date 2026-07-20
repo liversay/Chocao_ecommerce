@@ -107,3 +107,36 @@ export async function getBidHistory(
     pages: Math.max(1, Math.ceil(total / limit)),
   };
 }
+
+// Pujas del usuario dueño del token, con el vehículo asociado y una señal
+// clara de qué requiere acción (pago pendiente en las ganadoras).
+export async function getMyBids(user: UserDoc) {
+  const bids = await Bid.find({ userId: user._id }).populate("vehicleId").sort({ createdAt: -1 });
+  return bids.map((b) => {
+    const vehicle = b.vehicleId as unknown as {
+      _id: unknown;
+      title: string;
+      brand: string;
+      model: string;
+      year: number;
+      currentPrice: number;
+      status: string;
+    } | null;
+    return {
+      bidId: b._id.toString(),
+      amount: b.amount,
+      status: b.status,
+      createdAt: b.createdAt,
+      requiresPayment: b.status === "winner",
+      vehicle: vehicle && {
+        id: vehicle._id?.toString(),
+        title: vehicle.title,
+        brand: vehicle.brand,
+        model: vehicle.model,
+        year: vehicle.year,
+        currentPrice: vehicle.currentPrice,
+        status: vehicle.status,
+      },
+    };
+  });
+}

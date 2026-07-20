@@ -185,3 +185,31 @@ describe("chocao_get_bid_history (HU-49)", () => {
     expect(res.data!.pages).toBe(3);
   });
 });
+
+describe("chocao_get_my_bids (HU-51)", () => {
+  test("solo devuelve las pujas del usuario dueño del token, con requiresPayment en las ganadoras", async () => {
+    const [ana, bruno] = await Promise.all([createUser(), createUser()]);
+    const vehicle = await createVehicle();
+    await createBid(vehicle, ana, { amount: 12_000, status: "winner" });
+    await createBid(vehicle, bruno, { amount: 13_000, status: "active" });
+
+    const token = await obtainAccessToken(app, ana, "bids:read");
+    const res = await toolResult<{
+      bids: Array<{ amount: number; status: string; requiresPayment: boolean; vehicle: { title: string } }>;
+    }>(await callTool(app, token, "chocao_get_my_bids", {}));
+
+    expect(res.isError).toBeUndefined();
+    expect(res.data!.bids.length).toBe(1);
+    expect(res.data!.bids[0]!.amount).toBe(12_000);
+    expect(res.data!.bids[0]!.requiresPayment).toBe(true);
+    expect(res.data!.bids[0]!.vehicle.title).toBeDefined();
+  });
+
+  test("sin pujas devuelve una lista vacía, no un error", async () => {
+    const user = await createUser();
+    const token = await obtainAccessToken(app, user, "bids:read");
+    const res = await toolResult<{ bids: unknown[] }>(await callTool(app, token, "chocao_get_my_bids", {}));
+    expect(res.isError).toBeUndefined();
+    expect(res.data!.bids).toEqual([]);
+  });
+});
