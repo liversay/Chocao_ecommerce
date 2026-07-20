@@ -5,6 +5,7 @@ import { serve } from "@hono/node-server";
 import "dotenv/config";
 
 import { connectDB } from "./lib/db";
+import { errorHandler } from "./lib/errors";
 import usersRouter from "./routes/users";
 import vehiclesRouter from "./routes/vehicles";
 import bidsRouter from "./routes/bids";
@@ -32,10 +33,7 @@ app.route("/api/payments", paymentsRouter);
 app.route("/api/dashboard", dashboardRouter);
 
 app.notFound((c) => c.json({ error: "Recurso no encontrado" }, 404));
-app.onError((err, c) => {
-  console.error(err);
-  return c.json({ error: "Error interno del servidor" }, 500);
-});
+app.onError(errorHandler);
 
 const PORT = parseInt(process.env.PORT || "3000");
 

@@ -7,6 +7,8 @@ import PublicLayout from "./layouts/PublicLayout";
 import AdminLayout from "./layouts/AdminLayout";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminRoute from "./components/AdminRoute";
+import ErrorBoundary from "./components/ErrorBoundary";
+import NotFoundPage from "./pages/NotFoundPage";
 
 import Landing from "./pages/Landing";
 import LoginPage from "./pages/LoginPage";
@@ -46,6 +48,7 @@ function SyncUser() {
 export default function App() {
   return (
     <BrowserRouter>
+      <ErrorBoundary>
       <SyncUser />
       <Routes>
         <Route element={<PublicLayout />}>
@@ -89,6 +92,7 @@ export default function App() {
               </ProtectedRoute>
             }
           />
+          <Route path="*" element={<NotFoundPage />} />
         </Route>
 
         <Route
@@ -105,6 +109,7 @@ export default function App() {
           <Route path="reports" element={<AdminReports />} />
         </Route>
       </Routes>
+      </ErrorBoundary>
     </BrowserRouter>
   );
 }
