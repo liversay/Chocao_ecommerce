@@ -1,13 +1,13 @@
 import { Hono } from "hono";
 import type { AppEnv } from "../types";
 import stripe from "../lib/stripe";
-import { requireAuth } from "../middlewares/auth";
+import { requireAuth, requirePermission } from "../middlewares/auth";
 import { rateLimit } from "../middlewares/rateLimit";
 import { UnauthorizedError } from "../lib/errors";
 import { assertOwner } from "../lib/ownership";
 import { logger } from "../lib/logger";
-import { confirmCheckoutSession, createCheckout } from "../services/payments";
-import { validate } from "../schemas/common";
+import { confirmCheckoutSession, createCheckout, refundPayment } from "../services/payments";
+import { idParamSchema, validate } from "../schemas/common";
 import { checkoutSuccessQuerySchema, createCheckoutSchema } from "../schemas/payments";
 import { Payment } from "../models/Payment";
 
@@ -82,5 +82,16 @@ payments.get("/success", requireAuth, validate("query", checkoutSuccessQuerySche
 payments.get("/cancel", requireAuth, async (c) => {
   return c.json({ cancelled: true });
 });
+
+// Reembolso (finanzas): revierte adjudicación con rastro de auditoría
+payments.post(
+  "/:id/refund",
+  requirePermission("payment:refund"),
+  validate("param", idParamSchema),
+  async (c) => {
+    const payment = await refundPayment(c.req.valid("param").id, c.get("user"), c.get("requestId"));
+    return c.json({ refunded: true, payment });
+  }
+);
 
 export default payments;

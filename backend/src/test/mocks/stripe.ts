@@ -9,6 +9,7 @@ interface FakeSession {
   id: string;
   url: string;
   payment_status: "paid" | "unpaid";
+  payment_intent: string;
   metadata?: Record<string, string>;
 }
 
@@ -28,6 +29,7 @@ export const stripeMock = {
           id: `cs_test_${++counter}`,
           url: `https://checkout.stripe.test/pay/${counter}`,
           payment_status: "unpaid",
+          payment_intent: `pi_test_${counter}`,
           metadata: params.metadata,
         };
         sessions.set(session.id, session);
@@ -39,6 +41,13 @@ export const stripeMock = {
         return session;
       }),
     },
+  },
+  refunds: {
+    create: mock(async (params: { payment_intent: string }) => ({
+      id: `re_test_${params.payment_intent}`,
+      status: "succeeded",
+      payment_intent: params.payment_intent,
+    })),
   },
 };
 
@@ -52,6 +61,7 @@ export function resetStripeMock() {
   counter = 0;
   stripeMock.checkout.sessions.create.mockClear();
   stripeMock.checkout.sessions.retrieve.mockClear();
+  stripeMock.refunds.create.mockClear();
 }
 
 mock.module("../../lib/stripe", () => ({ default: stripeMock }));

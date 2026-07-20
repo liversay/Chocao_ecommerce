@@ -6,6 +6,7 @@ import { Bid } from "../models/Bid";
 import { Payment, type PaymentDoc } from "../models/Payment";
 import type { UserDoc } from "../models/User";
 import { Vehicle, type VehicleDoc } from "../models/Vehicle";
+import { recordAudit } from "./audit";
 
 // Crea (o reutiliza) la sesión de Stripe Checkout de un bid ganador.
 // Idempotencia end-to-end (HU-18):
@@ -132,4 +133,60 @@ export async function confirmCheckoutSession(
   });
 
   return { payment: claimed, transitioned: true };
+}
+
+// Reembolsa un pago completado (acción de finanzas, permiso payment:refund).
+// Revierte la adjudicación a un estado coherente y auditable:
+//   Payment → refunded · Bid → winner (puede volver a pagarse) · Vehicle → closed.
+// La notificación por correo al comprador llega con HU-40; por ahora queda
+// rastro en auditoría y logs.
+export async function refundPayment(
+  paymentId: string,
+  actor: UserDoc,
+  requestId?: string
+): Promise<PaymentDoc> {
+  const payment = await Payment.findById(paymentId);
+  if (!payment) throw new NotFoundError("Pago no encontrado");
+  if (payment.status !== "paid") {
+    throw new ConflictError("Solo se puede reembolsar un pago completado");
+  }
+  if (!payment.stripeSessionId) {
+    throw new ConflictError("El pago no tiene sesión de Stripe asociada");
+  }
+
+  const session = await stripe.checkout.sessions.retrieve(payment.stripeSessionId);
+  const paymentIntent =
+    typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id;
+  if (!paymentIntent) throw new ConflictError("La sesión no tiene un payment_intent reembolsable");
+
+  await stripe.refunds.create(
+    { payment_intent: paymentIntent },
+    // reintentos del mismo reembolso no lo duplican en Stripe
+    { idempotencyKey: `refund-${payment._id.toString()}` }
+  );
+
+  payment.status = "refunded";
+  await payment.save();
+  // La adjudicación se revierte: el bid vuelve a winner (pagable de nuevo o
+  // re-adjudicable por el admin) y el vehículo deja de estar awarded.
+  await Bid.findByIdAndUpdate(payment.bidId, { status: "winner" });
+  await Vehicle.findByIdAndUpdate(payment.vehicleId, { status: "closed" });
+
+  await recordAudit({
+    actor,
+    action: "payment.refund",
+    resource: "payment",
+    resourceId: payment._id.toString(),
+    before: { status: "paid" },
+    after: { status: "refunded", bidId: payment.bidId.toString() },
+    requestId,
+  });
+
+  logger.info("pago reembolsado", {
+    paymentId: payment._id.toString(),
+    bidId: payment.bidId.toString(),
+    actor: actor._id.toString(),
+  });
+
+  return payment;
 }
