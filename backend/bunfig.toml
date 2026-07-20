@@ -1,0 +1,5 @@
+[test]
+# Umbral mínimo de cobertura de líneas exigido cuando se corre con --coverage
+# (CI lo hace). Subirlo a medida que crezca la suite.
+coverageThreshold = { lines = 0.5 }
+coverageSkipTestFiles = true

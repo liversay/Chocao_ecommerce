@@ -14,6 +14,7 @@
   "devDependencies": {
     "@types/bun": "latest",
     "baseline-browser-mapping": "^2.10.44",
+    "mongodb-memory-server": "^11.2.0",
     "typescript": "^5.9.3"
   },
   "peerDependencies": {

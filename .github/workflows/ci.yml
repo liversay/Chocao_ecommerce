@@ -3,8 +3,8 @@ name: CI
 on:
   push:
     branches: [main]
+  # Sin filtro de ramas: los PRs apilados (base != main) también corren CI
   pull_request:
-    branches: [main]
 
 jobs:
   backend:
@@ -26,8 +26,8 @@ jobs:
       - name: Type-check (tsc --noEmit)
         run: bun run typecheck
 
-      - name: Tests
-        run: bun test
+      - name: Tests (con umbral de cobertura)
+        run: bun test --coverage
 
       - name: Auditoría de dependencias
         run: bun audit --audit-level=high

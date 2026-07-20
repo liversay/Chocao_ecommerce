@@ -30,7 +30,14 @@ health.get("/ready", async (c) => {
   );
 });
 
-// Métricas estilo Prometheus.
-health.get("/metrics", (c) => c.text(metrics.render()));
+// Métricas estilo Prometheus. En producción exigen METRICS_TOKEN (Bearer)
+// para no exponer patrones de tráfico; sin la variable quedan abiertas (dev).
+health.get("/metrics", (c) => {
+  const token = process.env.METRICS_TOKEN;
+  if (token && c.req.header("Authorization") !== `Bearer ${token}`) {
+    return c.json({ error: "No autorizado" }, 401);
+  }
+  return c.text(metrics.render());
+});
 
 export default health;
