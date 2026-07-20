@@ -1,10 +1,8 @@
 import { Hono } from "hono";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import {
-  ListPromptsRequestSchema,
-  ListResourcesRequestSchema,
-} from "@modelcontextprotocol/sdk/types.js";
+import { ListPromptsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import { attachToolHandlers } from "./registry";
+import { attachCatalogResource } from "./resources/catalog";
 import "./governance"; // registra rate limit + auditoría por invocación (HU-60)
 import "./tools"; // registra las tools de negocio (HU-47…58)
 import { StreamableHTTPTransport } from "@hono/mcp";
@@ -74,7 +72,8 @@ export function buildMcpServer(auth: McpAuthInfo): McpServer {
   });
   // tools/list y tools/call con gating por scope∩rol (registry, HU-59)
   attachToolHandlers(server.server, auth);
-  server.server.setRequestHandler(ListResourcesRequestSchema, async () => ({ resources: [] }));
+  // resource catalog://vehicles (HU-58), gated por scope catalog:read
+  attachCatalogResource(server.server, auth);
   server.server.setRequestHandler(ListPromptsRequestSchema, async () => ({ prompts: [] }));
   return server;
 }
@@ -82,8 +81,8 @@ export function buildMcpServer(auth: McpAuthInfo): McpServer {
 const mcp = new Hono<AppEnv>();
 
 // Transporte Streamable HTTP en modo stateless: cada request construye el
-// servidor con la identidad/scopes del token. (Las sesiones stateful con
-// suscripciones llegan con el resource catalog://vehicles, HU-58.)
+// servidor con la identidad/scopes del token. El resource catalog://vehicles
+// (HU-58) no anuncia `subscribe` — ver la nota en mcp/resources/catalog.ts.
 mcp.all("/", mcpAuth, async (c) => {
   const server = buildMcpServer(c.get("mcpAuth")!);
   const transport = new StreamableHTTPTransport();

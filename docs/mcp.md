@@ -84,6 +84,22 @@ según los scopes concedidos: un token sin scopes admin nunca ve las tools
 `admin:*`. Las tools de escritura están anotadas como sensibles para que el
 cliente pida confirmación explícita antes de comprometer dinero.
 
+### Resource `catalog://vehicles`
+
+Expone el inventario (primeras 50 entradas activas/publicadas, o con
+borradores si el token trae scope `vehicle:write`) como contexto de la
+conversación, sin necesidad de invocar una tool en cada turno.
+
+**Limitación conocida**: el transporte es Streamable HTTP en modo
+*stateless* (cada request construye una instancia nueva del servidor MCP).
+Suscribirse a cambios en tiempo real (`resources/subscribe` +
+`notifications/resources/updated`) requiere una sesión persistente con un
+stream SSE abierto, que este modo no ofrece — por eso no se anuncia
+`subscribe: true`. El cliente debe releer el resource (`resources/read`)
+para refrescar el contenido; el catálogo interno ya invalida su caché en
+cada cambio de inventario (HU-44), así que una relectura siempre trae datos
+al día.
+
 ## Variables de entorno relevantes (backend)
 
 | Variable | Uso |
