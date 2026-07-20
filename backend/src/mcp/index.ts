@@ -1,5 +1,10 @@
 import { Hono } from "hono";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import {
+  ListPromptsRequestSchema,
+  ListResourcesRequestSchema,
+  ListToolsRequestSchema,
+} from "@modelcontextprotocol/sdk/types.js";
 import { StreamableHTTPTransport } from "@hono/mcp";
 import type { Context, Next } from "hono";
 import { verifyAccessToken } from "../oauth/tokens";
@@ -50,6 +55,17 @@ export function buildMcpServer(_auth: McpAuthInfo): McpServer {
     { name: "chocao", version: "1.0.0" },
     { instructions: "Servidor MCP de Chocao — subastas de vehículos del gobierno de Panamá." }
   );
+  // Discovery (HU-46): tools/resources/prompts listables desde el handshake.
+  // Las tools de negocio se registran vía el registry (HU-47…HU-58) y el
+  // listado se filtra por los scopes del token (HU-59).
+  server.server.registerCapabilities({
+    tools: { listChanged: true },
+    resources: { listChanged: true },
+    prompts: { listChanged: true },
+  });
+  server.server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: [] }));
+  server.server.setRequestHandler(ListResourcesRequestSchema, async () => ({ resources: [] }));
+  server.server.setRequestHandler(ListPromptsRequestSchema, async () => ({ prompts: [] }));
   return server;
 }
 
