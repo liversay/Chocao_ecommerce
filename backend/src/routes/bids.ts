@@ -1,6 +1,9 @@
 import { Hono } from "hono";
 import type { AppEnv } from "../types";
 import { requireAuth, requireAdmin } from "../middlewares/auth";
+import { NotFoundError, ValidationError } from "../lib/errors";
+import { idParamSchema, validate } from "../schemas/common";
+import { placeBidSchema } from "../schemas/bids";
 import { Bid } from "../models/Bid";
 import { Vehicle } from "../models/Vehicle";
 
@@ -31,43 +34,47 @@ bids.get("/my/purchases", requireAuth, async (c) => {
 });
 
 // Bids for a vehicle
-bids.get("/vehicle/:id", async (c) => {
-  const list = await Bid.find({ vehicleId: c.req.param("id") })
+bids.get("/vehicle/:id", validate("param", idParamSchema), async (c) => {
+  const list = await Bid.find({ vehicleId: c.req.valid("param").id })
     .populate("userId", "name email")
     .sort({ amount: -1 });
   return c.json(list);
 });
 
 // Place a bid
-bids.post("/vehicle/:id", requireAuth, async (c) => {
-  const user = c.get("user");
-  const vehicleId = c.req.param("id");
-  const { amount } = await c.req.json();
+bids.post(
+  "/vehicle/:id",
+  requireAuth,
+  validate("param", idParamSchema),
+  validate("json", placeBidSchema),
+  async (c) => {
+    const user = c.get("user");
+    const vehicleId = c.req.valid("param").id;
+    const { amount } = c.req.valid("json");
 
-  if (!amount || typeof amount !== "number") {
-    return c.json({ error: "El monto debe ser un número válido" }, 400);
+    const vehicle = await Vehicle.findById(vehicleId);
+    if (!vehicle) throw new NotFoundError("Vehículo no encontrado");
+    if (vehicle.status !== "active") {
+      throw new ValidationError("Este vehículo no está abierto para pujas en este momento");
+    }
+    if (vehicle.auctionEndDate && new Date(vehicle.auctionEndDate) < new Date()) {
+      throw new ValidationError("La subasta ya finalizó; no se aceptan más pujas");
+    }
+    if (amount <= vehicle.currentPrice) {
+      throw new ValidationError(
+        `Tu puja debe ser mayor a la oferta actual ($${vehicle.currentPrice.toLocaleString()})`
+      );
+    }
+
+    // Mark previous winning bid as outbid
+    await Bid.updateMany({ vehicleId, status: "active" }, { status: "outbid" });
+
+    const bid = await Bid.create({ vehicleId, userId: user._id, amount, status: "active" });
+    vehicle.currentPrice = amount;
+    await vehicle.save();
+
+    return c.json(bid, 201);
   }
-
-  const vehicle = await Vehicle.findById(vehicleId);
-  if (!vehicle) return c.json({ error: "Vehículo no encontrado" }, 404);
-  if (vehicle.status !== "active") {
-    return c.json({ error: "Este vehículo no está abierto para pujas en este momento" }, 400);
-  }
-  if (vehicle.auctionEndDate && new Date(vehicle.auctionEndDate) < new Date()) {
-    return c.json({ error: "La subasta ya finalizó; no se aceptan más pujas" }, 400);
-  }
-  if (amount <= vehicle.currentPrice) {
-    return c.json({ error: `Tu puja debe ser mayor a la oferta actual ($${vehicle.currentPrice.toLocaleString()})` }, 400);
-  }
-
-  // Mark previous winning bid as outbid
-  await Bid.updateMany({ vehicleId, status: "active" }, { status: "outbid" });
-
-  const bid = await Bid.create({ vehicleId, userId: user._id, amount, status: "active" });
-  vehicle.currentPrice = amount;
-  await vehicle.save();
-
-  return c.json(bid, 201);
-});
+);
 
 export default bids;

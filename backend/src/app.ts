@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { bodyLimit } from "hono/body-limit";
 import { cors } from "hono/cors";
 import { secureHeaders } from "hono/secure-headers";
 
@@ -33,6 +34,15 @@ export function createApp() {
   );
   app.use("*", requestId);
   app.use("*", httpLogger);
+  // Límite global de payload (las imágenes viajan como URLs de Cloudinary,
+  // no en base64, así que 1 MB alcanza de sobra).
+  app.use(
+    "*",
+    bodyLimit({
+      maxSize: 1024 * 1024,
+      onError: (c) => c.json({ error: "El cuerpo de la petición supera el tamaño permitido" }, 413),
+    })
+  );
 
   app.get("/", (c) => c.json({ message: "Chocao API running" }));
 

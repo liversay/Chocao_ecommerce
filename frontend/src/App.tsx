@@ -38,7 +38,8 @@ function SyncUser() {
         user.emailAddresses[0]?.emailAddress ||
         "Usuario";
       const email = user.emailAddresses[0]?.emailAddress || "";
-      api.post("/api/users/sync", { clerkId: user.id, name, email }).catch(() => {});
+      // El backend toma el clerkId del token de Clerk, no del body
+      api.post("/api/users/sync", { name, email }).catch(() => {});
     }
   }, [isLoaded, isSignedIn, user?.id]);
 

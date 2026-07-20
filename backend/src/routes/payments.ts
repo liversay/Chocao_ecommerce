@@ -2,15 +2,17 @@ import { Hono } from "hono";
 import type { AppEnv } from "../types";
 import stripe from "../lib/stripe";
 import { requireAuth } from "../middlewares/auth";
+import { validate } from "../schemas/common";
+import { checkoutSuccessQuerySchema, createCheckoutSchema } from "../schemas/payments";
 import { Payment } from "../models/Payment";
 import { Bid } from "../models/Bid";
 import { Vehicle, type VehicleDoc } from "../models/Vehicle";
 
 const payments = new Hono<AppEnv>();
 
-payments.post("/create-checkout-session", requireAuth, async (c) => {
+payments.post("/create-checkout-session", requireAuth, validate("json", createCheckoutSchema), async (c) => {
   const user = c.get("user");
-  const { bidId } = await c.req.json();
+  const { bidId } = c.req.valid("json");
 
   const bid = await Bid.findById(bidId).populate<{ vehicleId: VehicleDoc }>("vehicleId");
   if (!bid) return c.json({ error: "Puja no encontrada" }, 404);
@@ -69,9 +71,8 @@ payments.post("/create-checkout-session", requireAuth, async (c) => {
   return c.json({ url: session.url });
 });
 
-payments.get("/success", requireAuth, async (c) => {
-  const { session_id } = c.req.query();
-  if (!session_id) return c.json({ error: "El identificador de sesión es obligatorio" }, 400);
+payments.get("/success", requireAuth, validate("query", checkoutSuccessQuerySchema), async (c) => {
+  const { session_id } = c.req.valid("query");
 
   const session = await stripe.checkout.sessions.retrieve(session_id);
   if (session.payment_status === "paid") {
