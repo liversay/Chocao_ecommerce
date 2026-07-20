@@ -21,6 +21,7 @@ import CheckoutResultPage from "./pages/CheckoutResultPage";
 import TermsPage from "./pages/TermsPage";
 import PrivacyPage from "./pages/PrivacyPage";
 import ContactPage from "./pages/ContactPage";
+import McpConsentPage from "./pages/McpConsentPage";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminVehicles from "./pages/admin/AdminVehicles";
 import AdminBids from "./pages/admin/AdminBids";
@@ -90,6 +91,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <CheckoutResultPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/mcp-consent"
+            element={
+              <ProtectedRoute>
+                <McpConsentPage />
               </ProtectedRoute>
             }
           />

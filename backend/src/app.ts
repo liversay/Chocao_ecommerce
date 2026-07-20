@@ -8,6 +8,8 @@ import { httpLogger, requestId } from "./middlewares/logging";
 import { rateLimit } from "./middlewares/rateLimit";
 import auditRouter from "./routes/audit";
 import healthRouter from "./routes/health";
+import mcpRouter from "./mcp";
+import oauthRouter from "./oauth/router";
 import usersRouter from "./routes/users";
 import vehiclesRouter from "./routes/vehicles";
 import bidsRouter from "./routes/bids";
@@ -30,8 +32,8 @@ export function createApp() {
     "*",
     cors({
       origin: (origin) => (allowedOrigins().includes(origin) ? origin : null),
-      allowHeaders: ["Content-Type", "Authorization", "X-Request-Id"],
-      exposeHeaders: ["X-Request-Id"],
+      allowHeaders: ["Content-Type", "Authorization", "X-Request-Id", "Mcp-Protocol-Version", "Mcp-Session-Id"],
+      exposeHeaders: ["X-Request-Id", "Mcp-Session-Id", "WWW-Authenticate"],
       allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     })
   );
@@ -58,6 +60,10 @@ export function createApp() {
   app.route("/api/payments", paymentsRouter);
   app.route("/api/dashboard", dashboardRouter);
   app.route("/api/audit", auditRouter);
+
+  // Servidor MCP (Streamable HTTP) + Authorization Server OAuth 2.1
+  app.route("/", oauthRouter);
+  app.route("/mcp", mcpRouter);
 
   app.notFound((c) => c.json({ error: "Recurso no encontrado" }, 404));
   app.onError(errorHandler);
