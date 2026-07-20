@@ -66,3 +66,66 @@ describe("chocao_search_vehicles (HU-47)", () => {
     expect(res.content[0]!.text).toContain("403");
   });
 });
+
+describe("chocao_get_vehicle (HU-48)", () => {
+  test("devuelve el detalle con segundos restantes y acceptsBids", async () => {
+    const vehicle = await createVehicle({
+      status: "active",
+      auctionEndDate: new Date(Date.now() + 60_000),
+    });
+    const customer = await createUser();
+    const token = await obtainAccessToken(app, customer, "catalog:read");
+
+    const res = await toolResult<{ remainingSeconds: number; acceptsBids: boolean; status: string }>(
+      await callTool(app, token, "chocao_get_vehicle", { vehicleId: vehicle._id.toString() })
+    );
+    expect(res.isError).toBeUndefined();
+    expect(res.data!.status).toBe("active");
+    expect(res.data!.acceptsBids).toBe(true);
+    expect(res.data!.remainingSeconds).toBeGreaterThan(0);
+  });
+
+  test("una subasta cerrada no acepta pujas", async () => {
+    const vehicle = await createVehicle({ status: "closed" });
+    const customer = await createUser();
+    const token = await obtainAccessToken(app, customer, "catalog:read");
+
+    const res = await toolResult<{ acceptsBids: boolean }>(
+      await callTool(app, token, "chocao_get_vehicle", { vehicleId: vehicle._id.toString() })
+    );
+    expect(res.data!.acceptsBids).toBe(false);
+  });
+
+  test("un vehículo inexistente responde 404 estructurado", async () => {
+    const customer = await createUser();
+    const token = await obtainAccessToken(app, customer, "catalog:read");
+    const fakeId = "64b5f0c8a2f4e1d9c3b7a611";
+
+    const res = await toolResult(await callTool(app, token, "chocao_get_vehicle", { vehicleId: fakeId }));
+    expect(res.isError).toBe(true);
+    expect(res.content[0]!.text).toContain("404");
+  });
+
+  test("un borrador no es visible sin scope vehicle:write", async () => {
+    const vehicle = await createVehicle({ status: "draft" });
+    const customer = await createUser();
+    const token = await obtainAccessToken(app, customer, "catalog:read");
+
+    const res = await toolResult(
+      await callTool(app, token, "chocao_get_vehicle", { vehicleId: vehicle._id.toString() })
+    );
+    expect(res.isError).toBe(true);
+    expect(res.content[0]!.text).toContain("404");
+  });
+
+  test("un id con formato inválido se rechaza por Zod, no revienta con CastError", async () => {
+    const customer = await createUser();
+    const token = await obtainAccessToken(app, customer, "catalog:read");
+
+    const res = await toolResult(
+      await callTool(app, token, "chocao_get_vehicle", { vehicleId: "no-es-un-id" })
+    );
+    expect(res.isError).toBe(true);
+    expect(res.content[0]!.text).toContain("Argumentos inválidos");
+  });
+});

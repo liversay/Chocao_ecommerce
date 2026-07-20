@@ -1,3 +1,4 @@
+import { NotFoundError } from "../lib/errors";
 import { Vehicle, type VehicleDoc } from "../models/Vehicle";
 
 export interface ListVehiclesParams {
@@ -84,4 +85,15 @@ export async function listVehicles(params: ListVehiclesParams = {}): Promise<Lis
   };
   cache.set(key, result);
   return result;
+}
+
+// Detalle de un vehículo por id. NotFoundError si no existe o si es un
+// borrador y quien pregunta no tiene scope admin.
+export async function getVehicleById(id: string, includeDrafts = false): Promise<VehicleDoc> {
+  const vehicle = await Vehicle.findById(id);
+  if (!vehicle) throw new NotFoundError("Vehículo no encontrado");
+  if (vehicle.status === "draft" && !includeDrafts) {
+    throw new NotFoundError("Vehículo no encontrado");
+  }
+  return vehicle;
 }
