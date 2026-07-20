@@ -5,7 +5,7 @@ import { __resetSecretForTests } from "../oauth/tokens";
 import "../mcp/tools";
 import { Vehicle } from "../models/Vehicle";
 import { setupTestDB } from "./db";
-import { createUser, createVehicle } from "./factories";
+import { createBid, createUser, createVehicle } from "./factories";
 import { obtainAccessToken } from "./oauthFlow";
 import { callTool, toolResult } from "./mcpRpc";
 import { createApp } from "../app";
@@ -86,5 +86,46 @@ describe("chocao_place_bid (HU-50)", () => {
     const list = (JSON.parse(json) as { result: { tools: Array<{ name: string; annotations?: { destructiveHint?: boolean } }> } }).result;
     const tool = list.tools.find((t) => t.name === "chocao_place_bid");
     expect(tool?.annotations?.destructiveHint).toBe(true);
+  });
+});
+
+describe("chocao_create_checkout_link (HU-53)", () => {
+  test("genera la url de pago de una puja ganadora propia", async () => {
+    const user = await createUser();
+    const vehicle = await createVehicle();
+    const bid = await createBid(vehicle, user, { amount: 12_000, status: "winner" });
+    const token = await obtainAccessToken(app, user, "payments:write");
+
+    const res = await toolResult<{ url: string }>(
+      await callTool(app, token, "chocao_create_checkout_link", { bidId: bid._id.toString() })
+    );
+    expect(res.isError).toBeUndefined();
+    expect(res.data!.url).toContain("https://");
+  });
+
+  test("no procede sobre una puja ajena (403)", async () => {
+    const [ana, bruno] = await Promise.all([createUser(), createUser()]);
+    const vehicle = await createVehicle();
+    const bid = await createBid(vehicle, ana, { amount: 12_000, status: "winner" });
+    const token = await obtainAccessToken(app, bruno, "payments:write");
+
+    const res = await toolResult(
+      await callTool(app, token, "chocao_create_checkout_link", { bidId: bid._id.toString() })
+    );
+    expect(res.isError).toBe(true);
+    expect(res.content[0]!.text).toContain("403");
+  });
+
+  test("no procede si el bid no está en estado winner", async () => {
+    const user = await createUser();
+    const vehicle = await createVehicle();
+    const bid = await createBid(vehicle, user, { amount: 12_000, status: "active" });
+    const token = await obtainAccessToken(app, user, "payments:write");
+
+    const res = await toolResult(
+      await callTool(app, token, "chocao_create_checkout_link", { bidId: bid._id.toString() })
+    );
+    expect(res.isError).toBe(true);
+    expect(res.content[0]!.text).toContain("ganadora");
   });
 });

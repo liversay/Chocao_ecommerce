@@ -23,6 +23,9 @@ export async function createCheckout(user: UserDoc, bidId: string): Promise<{ ur
   if (bid.status === "paid") {
     throw new ConflictError("Esta puja ya fue pagada");
   }
+  if (bid.status !== "winner") {
+    throw new ConflictError("Solo se puede pagar una puja ganadora");
+  }
 
   const existing = await Payment.findOne({ bidId: bid._id, status: "pending" });
   if (existing?.stripeSessionId) {
