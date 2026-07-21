@@ -46,16 +46,20 @@ export async function placeBid(user: UserDoc, vehicleId: string, amount: number)
 
   const bid = await Bid.create({ vehicleId: vehicle._id, userId: user._id, amount, status: "active" });
 
-  // Reconciliación idempotente y auto-correctiva: la puja activa más alta se
-  // conserva y el resto pasa a outbid. Bajo interleavings concurrentes, la
-  // última reconciliación deja exactamente una puja activa (la más alta).
-  const top = await Bid.findOne({ vehicleId: vehicle._id, status: "active" }).sort({ amount: -1 });
-  if (top) {
-    await Bid.updateMany(
-      { vehicleId: vehicle._id, status: "active", _id: { $ne: top._id } },
-      { status: "outbid" }
-    );
-  }
+  // Reconciliación por comparación de monto, no por identidad de un "top"
+  // leído antes: con `_id != top._id` un reconciliador con una vista vieja
+  // (que no veía aún la puja más alta, todavía en vuelo) podía outbidear a
+  // esa puja más alta al ejecutarse después que ella. Filtrando por
+  // `amount < la mía` cada puja SOLO puede degradar a las estrictamente
+  // menores — nunca a una mayor — así que el resultado converge sin
+  // importar en qué orden se intercalen los reconciliadores concurrentes:
+  // la puja global más alta termina siendo la única activa siempre que su
+  // propio paso de reconciliación llegue a ejecutarse (garantizado, porque
+  // sigue a su propio claim+create).
+  await Bid.updateMany(
+    { vehicleId: vehicle._id, status: "active", amount: { $lt: amount } },
+    { status: "outbid" }
+  );
 
   invalidateCatalog();
   metrics.increment("chocao_bids_total");
