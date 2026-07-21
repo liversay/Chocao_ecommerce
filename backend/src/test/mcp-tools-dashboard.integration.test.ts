@@ -46,3 +46,45 @@ describe("chocao_dashboard_summary (HU-56)", () => {
     expect(res.content[0]!.text).toContain("403");
   });
 });
+
+describe("chocao_reports (HU-57)", () => {
+  test("devuelve distribución por estado, top de pujas y vehículos recientes", async () => {
+    await createVehicle({ status: "active" });
+    await createVehicle({ status: "closed" });
+
+    const admin = await createUser({ role: "admin" });
+    const token = await obtainAccessToken(app, admin, "report:read");
+
+    const res = await toolResult<{
+      vehiclesByStatus: Array<{ _id: string; count: number }>;
+      topBids: unknown[];
+      recentVehicles: unknown[];
+    }>(await callTool(app, token, "chocao_reports", {}));
+
+    expect(res.isError).toBeUndefined();
+    expect(res.data!.vehiclesByStatus.length).toBeGreaterThan(0);
+    expect(Array.isArray(res.data!.topBids)).toBe(true);
+    expect(Array.isArray(res.data!.recentVehicles)).toBe(true);
+  });
+
+  test("acota el reporte a un rango temporal", async () => {
+    await createVehicle({ status: "active" });
+    const admin = await createUser({ role: "admin" });
+    const token = await obtainAccessToken(app, admin, "report:read");
+
+    const future = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+    const res = await toolResult<{ recentVehicles: unknown[] }>(
+      await callTool(app, token, "chocao_reports", { from: future })
+    );
+    // Nada creado después de "future": el reporte acotado viene vacío
+    expect(res.data!.recentVehicles.length).toBe(0);
+  });
+
+  test("sin scope report:read la tool falla con 403", async () => {
+    const customer = await createUser();
+    const token = await obtainAccessToken(app, customer, "catalog:read");
+    const res = await toolResult(await callTool(app, token, "chocao_reports", {}));
+    expect(res.isError).toBe(true);
+    expect(res.content[0]!.text).toContain("403");
+  });
+});
