@@ -4,6 +4,32 @@ import { User } from "../src/models/User";
 import { Vehicle } from "../src/models/Vehicle";
 import { Bid } from "../src/models/Bid";
 
+// Foto real de catálogo que coincide con marca/modelo/año/color, vía el CDN
+// público de demo de imagin.studio (customer "img", sin API key, matching
+// "best-effort": si no tiene el modelo exacto devuelve el más parecido en
+// vez de fallar). paintdescription espera nombres de color en inglés.
+const COLOR_EN: Record<string, string> = {
+  Blanco: "white",
+  Gris: "silver",
+  Azul: "blue",
+  Rojo: "red",
+  Verde: "green",
+  Negro: "black",
+};
+
+function carImageUrl(v: { brand: string; model: string; year: number; color?: string }): string {
+  const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "");
+  const params = new URLSearchParams({
+    customer: "img",
+    make: slug(v.brand),
+    modelFamily: slug(v.model),
+    modelYear: String(v.year),
+    angle: "01",
+  });
+  if (v.color) params.set("paintdescription", COLOR_EN[v.color] ?? v.color);
+  return `https://cdn.imagin.studio/getImage?${params.toString()}`;
+}
+
 // Seed idempotente para demos y pruebas: upsert por clave natural
 // (clerkId/email en usuarios, título en vehículos). Correrlo dos veces no
 // duplica nada. NO usar en producción con datos reales.
@@ -42,7 +68,10 @@ export async function seed() {
     savedVehicles.push(
       await Vehicle.findOneAndUpdate(
         { title: v.title },
-        { $set: { ...v, createdBy: admin!._id }, $setOnInsert: { currentPrice: v.basePrice } },
+        {
+          $set: { ...v, images: [carImageUrl(v)], createdBy: admin!._id },
+          $setOnInsert: { currentPrice: v.basePrice },
+        },
         { upsert: true, returnDocument: "after", setDefaultsOnInsert: true }
       )
     );
