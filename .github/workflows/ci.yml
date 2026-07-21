@@ -13,6 +13,11 @@ jobs:
     defaults:
       run:
         working-directory: backend
+    # Dummy no-op: algunos módulos leen esta variable al importarse (lib/stripe.ts
+    # lanza si falta), y CI no tiene .env. Los tests mockean Stripe/Clerk — nunca
+    # se usa un valor real.
+    env:
+      STRIPE_SECRET_KEY: sk_test_ci_dummy
     steps:
       - uses: actions/checkout@v4
 
