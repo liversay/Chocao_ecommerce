@@ -6,7 +6,7 @@ export interface IPayment {
   bidId: Types.ObjectId;
   stripeSessionId?: string;
   amount: number;
-  status: "pending" | "paid" | "cancelled";
+  status: "pending" | "paid" | "cancelled" | "refunded";
   createdAt: Date;
 }
 
@@ -19,7 +19,7 @@ const paymentSchema = new mongoose.Schema<IPayment>(
     bidId: { type: mongoose.Schema.Types.ObjectId, ref: "Bid", required: true },
     stripeSessionId: { type: String },
     amount: { type: Number, required: true },
-    status: { type: String, enum: ["pending", "paid", "cancelled"], default: "pending" },
+    status: { type: String, enum: ["pending", "paid", "cancelled", "refunded"], default: "pending" },
   },
   { timestamps: { createdAt: "createdAt", updatedAt: false } }
 );
