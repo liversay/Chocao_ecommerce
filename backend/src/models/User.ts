@@ -1,6 +1,16 @@
-import mongoose from "mongoose";
+import mongoose, { type HydratedDocument } from "mongoose";
 
-const userSchema = new mongoose.Schema(
+export interface IUser {
+  clerkId: string;
+  name: string;
+  email: string;
+  role: "customer" | "admin";
+  createdAt: Date;
+}
+
+export type UserDoc = HydratedDocument<IUser>;
+
+const userSchema = new mongoose.Schema<IUser>(
   {
     clerkId: { type: String, required: true, unique: true },
     name: { type: String, required: true },
@@ -10,4 +20,4 @@ const userSchema = new mongoose.Schema(
   { timestamps: { createdAt: "createdAt", updatedAt: false } }
 );
 
-export const User = mongoose.model("User", userSchema);
+export const User = mongoose.model<IUser>("User", userSchema);

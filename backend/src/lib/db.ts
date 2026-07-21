@@ -4,6 +4,10 @@ export async function connectDB() {
   const uri = process.env.MONGODB_URI;
   if (!uri) throw new Error("MONGODB_URI is not defined");
 
+  // Los índices se crean por migración (scripts/migrate.ts), no de forma
+  // implícita al levantar los modelos.
+  mongoose.set("autoIndex", false);
+
   try {
     await mongoose.connect(uri);
     console.log("MongoDB connected");

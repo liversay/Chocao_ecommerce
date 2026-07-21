@@ -1,89 +1,79 @@
 import { Hono } from "hono";
+import type { AppEnv } from "../types";
 import stripe from "../lib/stripe";
-import { requireAuth } from "../middlewares/auth";
+import { requireAuth, requirePermission } from "../middlewares/auth";
+import { rateLimit } from "../middlewares/rateLimit";
+import { UnauthorizedError } from "../lib/errors";
+import { assertOwner } from "../lib/ownership";
+import { logger } from "../lib/logger";
+import { confirmCheckoutSession, createCheckout, refundPayment } from "../services/payments";
+import { idParamSchema, validate } from "../schemas/common";
+import { checkoutSuccessQuerySchema, createCheckoutSchema } from "../schemas/payments";
 import { Payment } from "../models/Payment";
-import { Bid } from "../models/Bid";
-import { Vehicle } from "../models/Vehicle";
 
-const payments = new Hono();
+const payments = new Hono<AppEnv>();
 
-payments.post("/create-checkout-session", requireAuth, async (c) => {
-  const user = c.get("user");
-  const { bidId } = await c.req.json();
+// Webhook de Stripe (checkout.session.completed). Confirmación asíncrona y
+// resistente a fallos: el pago se registra aunque el usuario cierre el
+// navegador. SIN requireAuth ni Zod — la autenticidad la da la firma, que se
+// valida sobre el cuerpo RAW byte-exacto (nada debe consumir el body antes).
+payments.post("/webhook", async (c) => {
+  const signature = c.req.header("stripe-signature");
+  const secret = process.env.STRIPE_WEBHOOK_SECRET;
+  if (!secret) {
+    logger.error("STRIPE_WEBHOOK_SECRET no está configurado");
+    throw new UnauthorizedError("Webhook no configurado");
+  }
+  if (!signature) throw new UnauthorizedError("Falta la firma del webhook");
 
-  const bid = await Bid.findById(bidId).populate("vehicleId");
-  if (!bid) return c.json({ error: "Puja no encontrada" }, 404);
-  if (bid.userId.toString() !== user._id.toString()) {
-    return c.json({ error: "No tienes permisos sobre esta puja" }, 403);
+  const rawBody = await c.req.text();
+  let event;
+  try {
+    event = await stripe.webhooks.constructEventAsync(rawBody, signature, secret);
+  } catch {
+    throw new UnauthorizedError("Firma del webhook inválida");
   }
 
-  const vehicle = bid.vehicleId as InstanceType<typeof Vehicle>;
+  if (event.type === "checkout.session.completed") {
+    const session = event.data.object;
+    const { transitioned } = await confirmCheckoutSession({
+      id: session.id,
+      payment_status: session.payment_status,
+    });
+    logger.info("webhook checkout.session.completed", {
+      sessionId: session.id,
+      transitioned,
+      eventId: event.id,
+    });
+  }
 
-  const session = await stripe.checkout.sessions.create({
-    // No payment_method_types — Stripe selects dynamically based on buyer location
-    customer_email: user.email,
-    line_items: [
-      {
-        price_data: {
-          currency: "usd",
-          product_data: {
-            name: (vehicle as any).title || "Vehicle Auction",
-            description: `Subasta gubernamental — ${(vehicle as any).brand} ${(vehicle as any).model} ${(vehicle as any).year}`,
-          },
-          unit_amount: Math.round(bid.amount * 100),
-        },
-        quantity: 1,
-      },
-    ],
-    mode: "payment",
-    success_url: `${process.env.STRIPE_SUCCESS_URL}?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: process.env.STRIPE_CANCEL_URL,
-    metadata: {
-      bidId: bid._id.toString(),
-      userId: user._id.toString(),
-      vehicleId: (vehicle as any)._id.toString(),
-      vehicleTitle: (vehicle as any).title,
-      buyerEmail: user.email,
-      buyerName: user.name,
-    },
-    payment_intent_data: {
-      description: `Chocao · ${(vehicle as any).title} · Puja ganadora`,
-      metadata: {
-        bidId: bid._id.toString(),
-        vehicleId: (vehicle as any)._id.toString(),
-        buyerEmail: user.email,
-      },
-    },
-  });
-
-  await Payment.create({
-    userId: user._id,
-    vehicleId: (vehicle as any)._id,
-    bidId: bid._id,
-    stripeSessionId: session.id,
-    amount: bid.amount,
-    status: "pending",
-  });
-
-  return c.json({ url: session.url });
+  // 200 siempre que la firma sea válida: los eventos que no manejamos se
+  // reciben y descartan (Stripe no debe reintentarlos).
+  return c.json({ received: true });
 });
 
-payments.get("/success", requireAuth, async (c) => {
-  const { session_id } = c.req.query();
-  if (!session_id) return c.json({ error: "El identificador de sesión es obligatorio" }, 400);
+// La lógica (ownership, 409 si ya pagado, reutilización de sesión pendiente,
+// Idempotency-Key hacia Stripe) vive en services/payments.createCheckout.
+payments.post("/create-checkout-session", requireAuth, rateLimit({ name: "checkout", max: 5 }), validate("json", createCheckoutSchema), async (c) => {
+  const result = await createCheckout(c.get("user"), c.req.valid("json").bidId);
+  return c.json(result);
+});
+
+payments.get("/success", requireAuth, validate("query", checkoutSuccessQuerySchema), async (c) => {
+  const { session_id } = c.req.valid("query");
+
+  // Solo el dueño del pago puede confirmarlo/consultarlo (403, no 404 con datos).
+  // Este endpoint es el fallback por redirect; la fuente principal de
+  // confirmación es el webhook (ambos comparten confirmCheckoutSession).
+  const existing = await Payment.findOne({ stripeSessionId: session_id });
+  if (existing) assertOwner(existing.userId, c.get("user"), "No tienes permisos sobre este pago");
 
   const session = await stripe.checkout.sessions.retrieve(session_id);
   if (session.payment_status === "paid") {
-    const payment = await Payment.findOneAndUpdate(
-      { stripeSessionId: session_id },
-      { status: "paid" },
-      { new: true }
-    );
-    if (payment) {
-      // Bid transitions from "winner" → "paid" once the user completes the checkout
-      await Bid.findByIdAndUpdate(payment.bidId, { status: "paid" });
-      await Vehicle.findByIdAndUpdate(payment.vehicleId, { status: "awarded" });
-    }
+    const { payment } = await confirmCheckoutSession({
+      id: session.id,
+      payment_status: session.payment_status,
+    });
     return c.json({ success: true, payment });
   }
   return c.json({ success: false, status: session.payment_status });
@@ -92,5 +82,16 @@ payments.get("/success", requireAuth, async (c) => {
 payments.get("/cancel", requireAuth, async (c) => {
   return c.json({ cancelled: true });
 });
+
+// Reembolso (finanzas): revierte adjudicación con rastro de auditoría
+payments.post(
+  "/:id/refund",
+  requirePermission("payment:refund"),
+  validate("param", idParamSchema),
+  async (c) => {
+    const payment = await refundPayment(c.req.valid("param").id, c.get("user"), c.get("requestId"));
+    return c.json({ refunded: true, payment });
+  }
+);
 
 export default payments;

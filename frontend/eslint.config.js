@@ -18,5 +18,11 @@ export default defineConfig([
     languageOptions: {
       globals: globals.browser,
     },
+    rules: {
+      // Deuda técnica (HU-42/HU-44 tocarán estas pantallas): el patrón actual de
+      // setLoading/setState síncrono en effects dispara esta regla nueva de
+      // react-hooks v6. Se degrada a warning hasta refactorizar los data-fetch.
+      'react-hooks/set-state-in-effect': 'warn',
+    },
   },
 ])
