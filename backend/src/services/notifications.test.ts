@@ -1,8 +1,6 @@
-import "../test/mocks/mailer";
-import { beforeEach, describe, expect, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 import { setupTestDB } from "../test/db";
 import { createUser } from "../test/factories";
-import { sendEmailMock, resetMailerMock } from "../test/mocks/mailer";
 import { Notification } from "../models/Notification";
 import {
   markAllRead,
@@ -14,7 +12,28 @@ import {
 } from "./notifications";
 
 setupTestDB();
-beforeEach(() => resetMailerMock());
+
+// Igual que lib/mailer.test.ts: se prueba a través de la frontera real
+// (globalThis.fetch) en vez de mock.module-ear sendEmail. mock.module
+// reemplaza el módulo para TODO el proceso de "bun test" — si este archivo
+// mockeara "../lib/mailer", lib/mailer.test.ts (que prueba la implementación
+// REAL) quedaría contaminado por ese reemplazo global según el orden en que
+// Bun cargue los archivos, produciendo fallos dependientes del orden.
+const originalFetch = globalThis.fetch;
+const originalKey = process.env.RESEND_API_KEY;
+let fetchMock: ReturnType<typeof mock>;
+
+beforeEach(() => {
+  process.env.RESEND_API_KEY = "re_test_notifications";
+  fetchMock = mock(async () => new Response("{}", { status: 200 }));
+  globalThis.fetch = fetchMock as unknown as typeof fetch;
+});
+
+afterEach(() => {
+  globalThis.fetch = originalFetch;
+  if (originalKey === undefined) delete process.env.RESEND_API_KEY;
+  else process.env.RESEND_API_KEY = originalKey;
+});
 
 describe("notify", () => {
   test("crea la notificación in-app y envía el email cuando la preferencia está activa", async () => {
@@ -32,7 +51,7 @@ describe("notify", () => {
     expect(notifications).toHaveLength(1);
     expect(notifications[0]!.type).toBe("outbid");
     expect(notifications[0]!.read).toBe(false);
-    expect(sendEmailMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   test("respeta notificationPrefs desactivadas: no crea ni envía", async () => {
@@ -43,7 +62,7 @@ describe("notify", () => {
     await notify({ userId: user._id, type: "outbid", title: "Te superaron", body: "..." });
 
     expect(await Notification.countDocuments({ userId: user._id })).toBe(0);
-    expect(sendEmailMock).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   test("payment_confirmed y refunded comparten la preferencia 'payment'", async () => {
@@ -55,6 +74,7 @@ describe("notify", () => {
     await notify({ userId: user._id, type: "refunded", title: "Reembolso", body: "..." });
 
     expect(await Notification.countDocuments({ userId: user._id })).toBe(0);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   test("un userId inexistente no crea nada ni lanza", async () => {

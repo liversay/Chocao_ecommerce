@@ -1,5 +1,4 @@
 import "./mocks/clerk";
-import "./mocks/mailer";
 import { describe, expect, test } from "bun:test";
 import { createApp } from "../app";
 import { setupTestDB } from "./db";

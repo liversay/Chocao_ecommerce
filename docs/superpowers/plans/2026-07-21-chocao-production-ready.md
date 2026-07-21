@@ -24,6 +24,7 @@
 - New admin chart colors are literal hex (SVG can't read CSS custom properties): `#0f172a` bg, `#1e293b` surface, `#334155` border/grid, `#94a3b8` muted text, `#e2e8f0` text, `#3b82f6` primary/blue, `#f2b84b` accent/gold, `#34d399` success/green, `#f87171` danger/red — centralized once in `frontend/src/components/admin/charts/palette.ts` (Task 15), imported everywhere else that needs one of them.
 - `RESEND_API_KEY` / `RESEND_FROM` are the only new env vars. Without `RESEND_API_KEY` set, `sendEmail()` must log-and-return, never call `fetch`, never throw — the whole feature stays fully functional without a Resend account.
 - Commit after every task (or sub-task where a task has multiple TDD steps) with a Conventional-Commits-style message in Spanish matching the existing log (`feat(...)`, `fix(...)`, `chore(...)`).
+- **Addendum found during Task 4 review:** `backend/src/test/mocks/mailer.ts` (originally created in Task 2, `mock.module`-based) was removed after it was found to globally replace `lib/mailer`'s module cache for the whole `bun test` process — including for `lib/mailer.test.ts` itself, which tests the *real* `sendEmail()` — causing an order-dependent flaky failure once enough other files imported the mock. Fix applied directly by the controller (see the `fix(backend):` commit right after Task 4): `services/notifications.test.ts` (Task 3) now asserts email dispatch the same way `mailer.test.ts` does — set `process.env.RESEND_API_KEY`, mock `globalThis.fetch`, assert on `fetchMock` — instead of `mock.module`-ing `sendEmail`. No later task needs `mocks/mailer.ts`; if you are re-running this plan from scratch, skip creating that file in Task 2 Step 5 and use the `globalThis.fetch` technique everywhere instead.
 
 ---
 
@@ -1122,7 +1123,6 @@ git commit -m "feat(backend): endpoints de notificaciones y watchlist"
 // backend/src/test/notification-hooks.integration.test.ts
 import "./mocks/clerk";
 import "./mocks/stripe";
-import "./mocks/mailer";
 import { beforeEach, describe, expect, test } from "bun:test";
 import { createApp } from "../app";
 import { Notification } from "../models/Notification";
