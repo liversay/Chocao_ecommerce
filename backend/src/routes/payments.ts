@@ -3,15 +3,13 @@ import type { AppEnv } from "../types";
 import stripe from "../lib/stripe";
 import { requireAuth } from "../middlewares/auth";
 import { rateLimit } from "../middlewares/rateLimit";
-import { NotFoundError, UnauthorizedError } from "../lib/errors";
+import { UnauthorizedError } from "../lib/errors";
 import { assertOwner } from "../lib/ownership";
 import { logger } from "../lib/logger";
-import { confirmCheckoutSession } from "../services/payments";
+import { confirmCheckoutSession, createCheckout } from "../services/payments";
 import { validate } from "../schemas/common";
 import { checkoutSuccessQuerySchema, createCheckoutSchema } from "../schemas/payments";
 import { Payment } from "../models/Payment";
-import { Bid } from "../models/Bid";
-import type { VehicleDoc } from "../models/Vehicle";
 
 const payments = new Hono<AppEnv>();
 
@@ -54,63 +52,11 @@ payments.post("/webhook", async (c) => {
   return c.json({ received: true });
 });
 
+// La lógica (ownership, 409 si ya pagado, reutilización de sesión pendiente,
+// Idempotency-Key hacia Stripe) vive en services/payments.createCheckout.
 payments.post("/create-checkout-session", requireAuth, rateLimit({ name: "checkout", max: 5 }), validate("json", createCheckoutSchema), async (c) => {
-  const user = c.get("user");
-  const { bidId } = c.req.valid("json");
-
-  const bid = await Bid.findById(bidId).populate<{ vehicleId: VehicleDoc }>("vehicleId");
-  if (!bid) throw new NotFoundError("Puja no encontrada");
-  assertOwner(bid.userId, user, "No tienes permisos sobre esta puja");
-
-  const vehicle = bid.vehicleId;
-
-  const session = await stripe.checkout.sessions.create({
-    // No payment_method_types — Stripe selects dynamically based on buyer location
-    customer_email: user.email,
-    line_items: [
-      {
-        price_data: {
-          currency: "usd",
-          product_data: {
-            name: vehicle.title || "Vehicle Auction",
-            description: `Subasta gubernamental — ${vehicle.brand} ${vehicle.model} ${vehicle.year}`,
-          },
-          unit_amount: Math.round(bid.amount * 100),
-        },
-        quantity: 1,
-      },
-    ],
-    mode: "payment",
-    success_url: `${process.env.STRIPE_SUCCESS_URL}?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: process.env.STRIPE_CANCEL_URL,
-    metadata: {
-      bidId: bid._id.toString(),
-      userId: user._id.toString(),
-      vehicleId: vehicle._id.toString(),
-      vehicleTitle: vehicle.title,
-      buyerEmail: user.email,
-      buyerName: user.name,
-    },
-    payment_intent_data: {
-      description: `Chocao · ${vehicle.title} · Puja ganadora`,
-      metadata: {
-        bidId: bid._id.toString(),
-        vehicleId: vehicle._id.toString(),
-        buyerEmail: user.email,
-      },
-    },
-  });
-
-  await Payment.create({
-    userId: user._id,
-    vehicleId: vehicle._id,
-    bidId: bid._id,
-    stripeSessionId: session.id,
-    amount: bid.amount,
-    status: "pending",
-  });
-
-  return c.json({ url: session.url });
+  const result = await createCheckout(c.get("user"), c.req.valid("json").bidId);
+  return c.json(result);
 });
 
 payments.get("/success", requireAuth, validate("query", checkoutSuccessQuerySchema), async (c) => {

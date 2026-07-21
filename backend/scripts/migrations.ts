@@ -31,4 +31,20 @@ export const migrations: Migration[] = [
       await db.collection("auditlogs").createIndex({ resource: 1, resourceId: 1 });
     },
   },
+  {
+    version: 2,
+    name: "pago-unico-por-bid",
+    up: async (connection) => {
+      // HU-18: a lo sumo un pago vivo (pending o paid) por bid — la unicidad
+      // se garantiza a nivel de base de datos, no solo en la aplicación.
+      await connection.db!.collection("payments").createIndex(
+        { bidId: 1 },
+        {
+          unique: true,
+          partialFilterExpression: { status: { $in: ["pending", "paid"] } },
+          name: "unico_pago_vivo_por_bid",
+        }
+      );
+    },
+  },
 ];
