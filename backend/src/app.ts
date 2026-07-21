@@ -15,6 +15,8 @@ import vehiclesRouter from "./routes/vehicles";
 import bidsRouter from "./routes/bids";
 import paymentsRouter from "./routes/payments";
 import dashboardRouter from "./routes/dashboard";
+import notificationsRouter from "./routes/notifications";
+import watchlistRouter from "./routes/watchlist";
 import type { AppEnv } from "./types";
 
 // CORS estricto: solo los orígenes de la lista blanca (ALLOWED_ORIGINS, CSV).
@@ -60,6 +62,8 @@ export function createApp() {
   app.route("/api/payments", paymentsRouter);
   app.route("/api/dashboard", dashboardRouter);
   app.route("/api/audit", auditRouter);
+  app.route("/api/notifications", notificationsRouter);
+  app.route("/api/watchlist", watchlistRouter);
 
   // Servidor MCP (Streamable HTTP) + Authorization Server OAuth 2.1
   app.route("/", oauthRouter);
