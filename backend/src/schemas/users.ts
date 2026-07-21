@@ -8,3 +8,15 @@ export const syncUserSchema = z.object({
 export const patchRoleSchema = z.object({
   role: z.enum(["customer", "admin"], "Rol inválido"),
 });
+
+export const updateProfileSchema = z.object({
+  phone: z.string().trim().max(30).optional(),
+  notificationPrefs: z
+    .object({
+      outbid: z.boolean().optional(),
+      won: z.boolean().optional(),
+      payment: z.boolean().optional(),
+      watchClosing: z.boolean().optional(),
+    })
+    .optional(),
+});

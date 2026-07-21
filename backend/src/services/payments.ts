@@ -212,3 +212,38 @@ export async function refundPayment(
 
   return payment;
 }
+
+export interface Receipt {
+  paymentId: string;
+  amount: number;
+  paidAt: Date;
+  buyerName: string;
+  buyerEmail: string;
+  vehicle: { title: string; brand: string; model: string; year: number };
+  stripeSessionId?: string;
+}
+
+// Recibo de un pago completado (comprador dueño únicamente). paidAt usa
+// createdAt del Payment: el modelo no tiene un campo separado para el
+// momento de confirmación, y el registro solo existe una vez creado en
+// createCheckout (createdAt ≈ momento del intento de pago, suficientemente
+// preciso para un recibo).
+export async function getReceipt(paymentId: string, user: UserDoc): Promise<Receipt> {
+  const payment = await Payment.findById(paymentId).populate<{ vehicleId: VehicleDoc }>("vehicleId");
+  if (!payment) throw new NotFoundError("Pago no encontrado");
+  assertOwner(payment.userId, user, "No tienes permisos sobre este recibo");
+  if (payment.status !== "paid") {
+    throw new ConflictError("El recibo solo está disponible para pagos completados");
+  }
+
+  const vehicle = payment.vehicleId;
+  return {
+    paymentId: payment._id.toString(),
+    amount: payment.amount,
+    paidAt: payment.createdAt,
+    buyerName: user.name,
+    buyerEmail: user.email,
+    vehicle: { title: vehicle.title, brand: vehicle.brand, model: vehicle.model, year: vehicle.year },
+    stripeSessionId: payment.stripeSessionId,
+  };
+}
