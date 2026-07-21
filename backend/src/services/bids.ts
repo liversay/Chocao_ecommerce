@@ -4,6 +4,7 @@ import { Bid } from "../models/Bid";
 import { Payment } from "../models/Payment";
 import type { UserDoc } from "../models/User";
 import { Vehicle } from "../models/Vehicle";
+import { notifyMany } from "./notifications";
 import { invalidateCatalog } from "./vehicles";
 
 // Registra una puja con control de concurrencia optimista. La reutilizan la
@@ -47,6 +48,15 @@ export async function placeBid(user: UserDoc, vehicleId: string, amount: number)
 
   const bid = await Bid.create({ vehicleId: vehicle._id, userId: user._id, amount, status: "active" });
 
+  // Antes de degradar las pujas superadas, capturamos a quiénes pertenecían
+  // (para notificarlos) — el updateMany no devuelve los documentos afectados.
+  const outbidUserIds = await Bid.distinct("userId", {
+    vehicleId: vehicle._id,
+    status: "active",
+    amount: { $lt: amount },
+    userId: { $ne: user._id },
+  });
+
   // Reconciliación por comparación de monto, no por identidad de un "top"
   // leído antes: con `_id != top._id` un reconciliador con una vista vieja
   // (que no veía aún la puja más alta, todavía en vuelo) podía outbidear a
@@ -64,6 +74,15 @@ export async function placeBid(user: UserDoc, vehicleId: string, amount: number)
 
   invalidateCatalog();
   metrics.increment("chocao_bids_total");
+
+  if (outbidUserIds.length > 0) {
+    await notifyMany(outbidUserIds, "outbid", () => ({
+      title: "Te superaron en una puja",
+      body: `Alguien ofreció más por "${vehicle.title}". El precio actual es $${claimed.currentPrice.toLocaleString()}.`,
+      data: { vehicleId: vehicle._id.toString() },
+    }));
+  }
+
   return { bid, currentPrice: claimed.currentPrice };
 }
 

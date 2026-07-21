@@ -5,6 +5,8 @@ import { Vehicle, type IVehicle, type VehicleDoc } from "../models/Vehicle";
 import { recordAudit } from "./audit";
 import { invalidateCatalog } from "./vehicles";
 import type { UserDoc } from "../models/User";
+import { notify, notifyMany } from "./notifications";
+import { Watchlist } from "../models/Watchlist";
 
 // Adjudicación: la puja más alta del vehículo queda winner y el resto outbid.
 // Idempotente — re-ejecutarla no cambia el resultado. La comparten el cambio
@@ -19,8 +21,20 @@ export async function adjudicateVehicle(vehicleId: string): Promise<string | und
     { status: "outbid" }
   );
   if (highestBid.status !== "paid") {
+    const wasAlreadyWinner = highestBid.status === "winner";
     highestBid.status = "winner";
     await highestBid.save();
+
+    if (!wasAlreadyWinner) {
+      const vehicle = await Vehicle.findById(vehicleId).select("title");
+      await notify({
+        userId: highestBid.userId,
+        type: "won",
+        title: "¡Ganaste la subasta!",
+        body: `Tu puja fue la más alta por "${vehicle?.title ?? "el vehículo"}". Completa el pago para adjudicarlo.`,
+        data: { vehicleId, bidId: highestBid._id.toString() },
+      });
+    }
   }
   return highestBid._id.toString();
 }
@@ -96,4 +110,41 @@ export async function setVehicleStatus(
   });
 
   return { vehicle, winnerBidId };
+}
+
+const CLOSING_SOON_WINDOW_MS = 60 * 60 * 1000; // 1 hora
+
+// Avisa a quienes siguen (watchlist) un vehículo activo que está por cerrar
+// dentro de la próxima hora. Idempotente vía claim atómico sobre
+// closingSoonNotifiedAt — mismo patrón que closeExpiredAuctions: un tick
+// duplicado o varias instancias del job no reenvían el aviso.
+export async function notifyClosingSoonWatchers(): Promise<number> {
+  const now = new Date();
+  const soon = new Date(now.getTime() + CLOSING_SOON_WINDOW_MS);
+  const vehicles = await Vehicle.find({
+    status: "active",
+    auctionEndDate: { $gt: now, $lte: soon },
+    closingSoonNotifiedAt: { $exists: false },
+  }).select("title");
+
+  let notified = 0;
+  for (const vehicle of vehicles) {
+    const claimed = await Vehicle.findOneAndUpdate(
+      { _id: vehicle._id, closingSoonNotifiedAt: { $exists: false } },
+      { closingSoonNotifiedAt: now },
+      { returnDocument: "after" }
+    );
+    if (!claimed) continue;
+
+    const watcherIds = await Watchlist.distinct("userId", { vehicleId: vehicle._id });
+    if (watcherIds.length === 0) continue;
+
+    await notifyMany(watcherIds, "watch_closing", () => ({
+      title: "Una subasta que sigues está por cerrar",
+      body: `"${vehicle.title}" cierra en menos de una hora.`,
+      data: { vehicleId: vehicle._id.toString() },
+    }));
+    notified += watcherIds.length;
+  }
+  return notified;
 }

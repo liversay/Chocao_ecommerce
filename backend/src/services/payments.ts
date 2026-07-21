@@ -7,6 +7,7 @@ import { Payment, type PaymentDoc } from "../models/Payment";
 import type { UserDoc } from "../models/User";
 import { Vehicle, type VehicleDoc } from "../models/Vehicle";
 import { recordAudit } from "./audit";
+import { notify } from "./notifications";
 
 // Crea (o reutiliza) la sesión de Stripe Checkout de un bid ganador.
 // Idempotencia end-to-end (HU-18):
@@ -135,6 +136,15 @@ export async function confirmCheckoutSession(
     sessionId: session.id,
   });
 
+  const vehicle = await Vehicle.findById(claimed.vehicleId).select("title");
+  await notify({
+    userId: claimed.userId,
+    type: "payment_confirmed",
+    title: "Pago confirmado",
+    body: `Tu pago de $${claimed.amount.toLocaleString()} por "${vehicle?.title ?? "el vehículo"}" fue confirmado.`,
+    data: { vehicleId: claimed.vehicleId.toString(), bidId: claimed.bidId.toString(), paymentId: claimed._id.toString() },
+  });
+
   return { payment: claimed, transitioned: true };
 }
 
@@ -189,6 +199,15 @@ export async function refundPayment(
     paymentId: payment._id.toString(),
     bidId: payment.bidId.toString(),
     actor: actor._id.toString(),
+  });
+
+  const vehicle = await Vehicle.findById(payment.vehicleId).select("title");
+  await notify({
+    userId: payment.userId,
+    type: "refunded",
+    title: "Tu pago fue reembolsado",
+    body: `El pago de $${payment.amount.toLocaleString()} por "${vehicle?.title ?? "el vehículo"}" fue reembolsado.`,
+    data: { vehicleId: payment.vehicleId.toString(), bidId: payment.bidId.toString(), paymentId: payment._id.toString() },
   });
 
   return payment;
