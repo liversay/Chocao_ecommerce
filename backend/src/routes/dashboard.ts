@@ -3,7 +3,7 @@ import type { AppEnv } from "../types";
 import { requirePermission } from "../middlewares/auth";
 import { validate } from "../schemas/common";
 import { reportsQuerySchema } from "../schemas/dashboard";
-import { getDashboardSummary, getReports } from "../services/dashboard";
+import { getDashboardSummary, getReports, getAnalytics } from "../services/dashboard";
 
 const dashboard = new Hono<AppEnv>();
 
@@ -15,5 +15,15 @@ dashboard.get("/reports", requirePermission("report:read"), validate("query", re
   const { from, to } = c.req.valid("query");
   return c.json(await getReports({ from, to }));
 });
+
+dashboard.get(
+  "/analytics",
+  requirePermission("report:read"),
+  validate("query", reportsQuerySchema),
+  async (c) => {
+    const { from, to } = c.req.valid("query");
+    return c.json(await getAnalytics({ from, to }));
+  }
+);
 
 export default dashboard;
