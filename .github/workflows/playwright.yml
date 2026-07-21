@@ -15,18 +15,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - uses: oven-sh/setup-bun@v2
         with:
-          node-version: 22
+          bun-version: latest
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Instalar dependencias
+        run: bun install --frozen-lockfile
 
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
+      - name: Instalar navegadores de Playwright
+        run: bunx playwright install --with-deps chromium
 
-      - name: Run Playwright tests
-        run: npm run test:e2e
+      - name: Correr tests de Playwright
+        run: bun run test:e2e
 
       - uses: actions/upload-artifact@v4
         if: always()
