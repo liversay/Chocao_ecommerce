@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useEffect } from "react";
 import { useUser, useAuth } from "@clerk/react";
 import { useApi } from "./hooks/useApi";
+import { RealtimeProvider } from "./context/RealtimeContext";
 
 import PublicLayout from "./layouts/PublicLayout";
 import AdminLayout from "./layouts/AdminLayout";
@@ -58,6 +59,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <ErrorBoundary>
+      <RealtimeProvider>
       <SyncUser />
       <Routes>
         <Route element={<PublicLayout />}>
@@ -161,6 +163,7 @@ export default function App() {
           <Route path="audit" element={<AdminAudit />} />
         </Route>
       </Routes>
+      </RealtimeProvider>
       </ErrorBoundary>
     </BrowserRouter>
   );

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
+import { useRealtime } from "../context/RealtimeContext";
 import VehicleCard from "../components/VehicleCard";
 import PageHeader from "../components/PageHeader";
 import EmptyState from "../components/EmptyState";
@@ -28,6 +29,7 @@ interface CatalogResponse {
 }
 
 export default function CatalogPage() {
+  const { subscribe } = useRealtime();
   const [data, setData] = useState<CatalogResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("");
@@ -52,6 +54,38 @@ export default function CatalogPage() {
     }, search ? 300 : 0);
     return () => clearTimeout(timer);
   }, [filter, search, page]);
+
+  // Precio/estado en vivo por tarjeta — sin re-fetch de la página completa.
+  // No añade ni quita tarjetas si un vehículo deja de calzar con el filtro
+  // actual; eso se corrige solo en el próximo cambio de filtro/página.
+  useEffect(() => {
+    const unsubBid = subscribe("bid.placed", (payload) => {
+      setData((d) =>
+        d
+          ? {
+              ...d,
+              items: d.items.map((v) => (v._id === payload.vehicleId ? { ...v, currentPrice: payload.currentPrice } : v)),
+            }
+          : d
+      );
+    });
+    const unsubStatus = subscribe("vehicle.status", (payload) => {
+      setData((d) =>
+        d
+          ? {
+              ...d,
+              items: d.items.map((v) =>
+                v._id === payload.vehicleId ? { ...v, status: payload.status as Vehicle["status"] } : v
+              ),
+            }
+          : d
+      );
+    });
+    return () => {
+      unsubBid();
+      unsubStatus();
+    };
+  }, [subscribe]);
 
   const items = data?.items ?? [];
 

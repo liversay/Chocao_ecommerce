@@ -1,6 +1,7 @@
 // frontend/src/pages/admin/AdminUsers.tsx
 import { useEffect, useState } from "react";
 import { useApi } from "../../hooks/useApi";
+import { useRealtimeRefetch } from "../../hooks/useRealtimeRefetch";
 import Card from "../../components/Card";
 import Button from "../../components/Button";
 import Input from "../../components/Input";
@@ -52,6 +53,7 @@ export default function AdminUsers() {
     const timer = setTimeout(load, q ? 300 : 0);
     return () => clearTimeout(timer);
   }, [q, role, page]);
+  useRealtimeRefetch(["user.updated"], load);
 
   async function confirmRoleChange() {
     if (!pendingChange) return;

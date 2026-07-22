@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useApi } from "../../hooks/useApi";
+import { useRealtimeRefetch } from "../../hooks/useRealtimeRefetch";
 import Card from "../../components/Card";
 import Button from "../../components/Button";
 import DataTable from "../../components/DataTable";
@@ -53,7 +54,7 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [range, setRange] = useState({ from: isoDaysAgo(30), to: isoDaysAgo(0) });
 
-  useEffect(() => {
+  function load() {
     setLoading(true);
     const params = new URLSearchParams({ from: range.from, to: range.to });
     Promise.all([
@@ -69,7 +70,11 @@ export default function AdminDashboard() {
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [range.from, range.to]);
+  }
+
+  useEffect(load, [range.from, range.to]);
+  // Cualquier movimiento de negocio puede mover estas métricas.
+  useRealtimeRefetch(["bid.placed", "vehicle.status", "vehicle.updated", "vehicle.removed", "order.updated"], load);
 
   if (loading && !summary) return <LoadingState message="Cargando dashboard..." />;
 

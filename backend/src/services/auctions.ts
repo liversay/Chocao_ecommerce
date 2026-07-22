@@ -6,6 +6,7 @@ import { recordAudit } from "./audit";
 import { invalidateCatalog } from "./vehicles";
 import type { UserDoc } from "../models/User";
 import { notify, notifyMany } from "./notifications";
+import { publishPublic } from "./realtime";
 import { Watchlist } from "../models/Watchlist";
 
 // Adjudicación: la puja más alta del vehículo queda winner y el resto outbid.
@@ -55,6 +56,7 @@ export async function closeExpiredAuctions(actor?: UserDoc): Promise<number> {
 
     const winnerBidId = await adjudicateVehicle(vehicle._id.toString());
     invalidateCatalog();
+    publishPublic({ type: "vehicle.status", payload: { vehicleId: vehicle._id.toString(), status: "closed" } });
     closed += 1;
 
     await recordAudit({
@@ -93,6 +95,7 @@ export async function setVehicleStatus(
   vehicle.status = status;
   await vehicle.save();
   invalidateCatalog();
+  publishPublic({ type: "vehicle.status", payload: { vehicleId: vehicle._id.toString(), status } });
 
   let winnerBidId: string | undefined;
   if (status === "closed" || status === "awarded") {

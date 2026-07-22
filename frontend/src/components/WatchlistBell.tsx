@@ -1,14 +1,18 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useApi } from "../hooks/useApi";
+import { useRealtime } from "../context/RealtimeContext";
+
+// Fallback si el stream SSE se cae — el evento "watchlist.updated" en vivo
+// cubre el caso normal, incluso entre pestañas/dispositivos del mismo usuario.
+const POLL_FALLBACK_MS = 120_000;
 
 // Botón de acceso rápido a "Mi watchlist" en el navbar, junto a la campana
-// de notificaciones. Muestra la cantidad de vehículos guardados; se
-// refresca con el mismo intervalo que NotificationBell para no divergir si
-// el usuario guarda/quita vehículos desde otra pestaña.
+// de notificaciones. Muestra la cantidad de vehículos guardados.
 export default function WatchlistBell() {
   const api = useApi();
   const navigate = useNavigate();
+  const { subscribe } = useRealtime();
   const [count, setCount] = useState(0);
 
   useEffect(() => {
@@ -22,12 +26,18 @@ export default function WatchlistBell() {
         .catch(() => {});
     }
     poll();
-    const id = setInterval(poll, 30_000);
+    const id = setInterval(poll, POLL_FALLBACK_MS);
     return () => {
       cancelled = true;
       clearInterval(id);
     };
   }, []);
+
+  useEffect(() => {
+    return subscribe("watchlist.updated", (payload) => {
+      setCount((c) => Math.max(0, c + (payload.action === "added" ? 1 : -1)));
+    });
+  }, [subscribe]);
 
   return (
     <button

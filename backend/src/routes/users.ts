@@ -6,6 +6,7 @@ import { NotFoundError, UnauthorizedError } from "../lib/errors";
 import { idParamSchema, validate } from "../schemas/common";
 import { listUsersQuerySchema, patchRoleSchema, syncUserSchema, updateProfileSchema } from "../schemas/users";
 import { recordAudit } from "../services/audit";
+import { publishToAdmins } from "../services/realtime";
 import { listUsers } from "../services/users";
 import { User } from "../models/User";
 
@@ -78,6 +79,8 @@ users.patch(
       after: { role },
       requestId: c.get("requestId"),
     });
+
+    publishToAdmins({ type: "user.updated", payload: { userId: user._id.toString() } });
 
     return c.json(user);
   }

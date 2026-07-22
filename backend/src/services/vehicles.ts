@@ -2,6 +2,7 @@ import { NotFoundError, ValidationError } from "../lib/errors";
 import { Vehicle, type IVehicle, type VehicleDoc } from "../models/Vehicle";
 import type { UserDoc } from "../models/User";
 import { recordAudit } from "./audit";
+import { publishPublic } from "./realtime";
 
 export interface ListVehiclesParams {
   status?: "all" | "draft" | "published" | "active" | "closed" | "awarded";
@@ -136,6 +137,7 @@ export async function upsertVehicle(
     Object.assign(vehicle, fields);
     await vehicle.save();
     invalidateCatalog();
+    publishPublic({ type: "vehicle.updated", payload: { vehicleId: vehicle._id.toString() } });
 
     await recordAudit({
       actor,
@@ -161,6 +163,7 @@ export async function upsertVehicle(
     createdBy: actor._id,
   });
   invalidateCatalog();
+  publishPublic({ type: "vehicle.updated", payload: { vehicleId: vehicle._id.toString() } });
 
   await recordAudit({
     actor,

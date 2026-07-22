@@ -67,6 +67,13 @@ export interface RateLimitOptions {
   /** Tamaño de la ventana en ms (por defecto 1 minuto). */
   windowMs?: number;
   store?: RateLimitStore;
+  /**
+   * Excluye ciertas peticiones del contador global. Pensado para /api/events
+   * (SSE): es una conexión larga, no una ráfaga de requests, y no debe
+   * compartir presupuesto con el resto de la API — tiene su propio límite,
+   * más generoso, en routes/events.ts.
+   */
+  skip?: (c: Context<AppEnv>) => boolean;
 }
 
 function clientIp(c: Context<AppEnv>): string {
@@ -77,8 +84,10 @@ function clientIp(c: Context<AppEnv>): string {
 
 // Límite por usuario autenticado (si el middleware corre después de auth) o
 // por IP. Al excederse responde 429 con Retry-After en segundos.
-export function rateLimit({ name, max, windowMs = 60_000, store = defaultStore }: RateLimitOptions) {
+export function rateLimit({ name, max, windowMs = 60_000, store = defaultStore, skip }: RateLimitOptions) {
   return async (c: Context<AppEnv>, next: Next) => {
+    if (skip?.(c)) return next();
+
     const user = c.get("user");
     const subject = user ? `u:${user._id.toString()}` : `ip:${clientIp(c)}`;
     const { count, resetAt } = store.hit(`${name}:${subject}`, windowMs);
