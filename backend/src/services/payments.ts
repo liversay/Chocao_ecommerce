@@ -3,7 +3,7 @@ import { logger } from "../lib/logger";
 import { assertOwner } from "../lib/ownership";
 import stripe from "../lib/stripe";
 import { Bid } from "../models/Bid";
-import { Payment, type PaymentDoc } from "../models/Payment";
+import { Payment, type IPayment, type PaymentDoc } from "../models/Payment";
 import type { UserDoc } from "../models/User";
 import { Vehicle, type VehicleDoc } from "../models/Vehicle";
 import { recordAudit } from "./audit";
@@ -246,4 +246,31 @@ export async function getReceipt(paymentId: string, user: UserDoc): Promise<Rece
     vehicle: { title: vehicle.title, brand: vehicle.brand, model: vehicle.model, year: vehicle.year },
     stripeSessionId: payment.stripeSessionId,
   };
+}
+
+export interface ListPaymentsParams {
+  status?: IPayment["status"];
+  from?: Date;
+  to?: Date;
+  page?: number;
+  limit?: number;
+}
+
+// Listado de pagos/órdenes para el backoffice, filtrable por estado y rango
+// de fecha, con comprador y vehículo poblados para la tabla.
+export async function listPayments({ status, from, to, page = 1, limit = 20 }: ListPaymentsParams) {
+  const filter: Record<string, unknown> = {};
+  if (status) filter.status = status;
+  if (from || to) filter.createdAt = { ...(from ? { $gte: from } : {}), ...(to ? { $lte: to } : {}) };
+
+  const [items, total] = await Promise.all([
+    Payment.find(filter)
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .populate("userId", "name email")
+      .populate("vehicleId", "title brand model"),
+    Payment.countDocuments(filter),
+  ]);
+  return { items, total, page, pages: Math.max(1, Math.ceil(total / limit)) };
 }

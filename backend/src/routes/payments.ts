@@ -6,12 +6,21 @@ import { rateLimit } from "../middlewares/rateLimit";
 import { UnauthorizedError } from "../lib/errors";
 import { assertOwner } from "../lib/ownership";
 import { logger } from "../lib/logger";
-import { confirmCheckoutSession, createCheckout, refundPayment, getReceipt } from "../services/payments";
+import { confirmCheckoutSession, createCheckout, refundPayment, getReceipt, listPayments } from "../services/payments";
 import { idParamSchema, validate } from "../schemas/common";
-import { checkoutSuccessQuerySchema, createCheckoutSchema } from "../schemas/payments";
+import { checkoutSuccessQuerySchema, createCheckoutSchema, listPaymentsQuerySchema } from "../schemas/payments";
 import { Payment } from "../models/Payment";
 
 const payments = new Hono<AppEnv>();
+
+payments.get(
+  "/",
+  requirePermission("payments:read"),
+  validate("query", listPaymentsQuerySchema),
+  async (c) => {
+    return c.json(await listPayments(c.req.valid("query")));
+  }
+);
 
 // Webhook de Stripe (checkout.session.completed). Confirmación asíncrona y
 // resistente a fallos: el pago se registra aunque el usuario cierre el
