@@ -52,7 +52,7 @@ export interface Payment {
   bidId: string;
   stripeSessionId: string;
   amount: number;
-  status: "pending" | "paid" | "cancelled";
+  status: "pending" | "paid" | "cancelled" | "refunded";
   createdAt: string;
 }
 
