@@ -6,6 +6,7 @@ import { idParamSchema, validate } from "../schemas/common";
 import { placeBidSchema } from "../schemas/bids";
 import { placeBid } from "../services/bids";
 import { Bid } from "../models/Bid";
+import { Payment } from "../models/Payment";
 
 const bids = new Hono<AppEnv>();
 
@@ -24,13 +25,24 @@ bids.get("/my", requireAuth, async (c) => {
   return c.json(list);
 });
 
-// Customer: my purchases (paid bids only)
+// Customer: my purchases (paid bids only). Cada fila trae `payment: {id,
+// status}` — el frontend (MyPurchasesPage → botón "Ver recibo") lo usa para
+// enlazar a GET /api/payments/:id/receipt.
 bids.get("/my/purchases", requireAuth, async (c) => {
   const user = c.get("user");
   const list = await Bid.find({ userId: user._id, status: "paid" })
     .populate("vehicleId")
-    .sort({ createdAt: -1 });
-  return c.json(list);
+    .sort({ createdAt: -1 })
+    .lean();
+
+  const payments = await Payment.find({ bidId: { $in: list.map((b) => b._id) } }).lean();
+  const paymentByBid = new Map(payments.map((p) => [p.bidId.toString(), p]));
+
+  const withPayment = list.map((bid) => {
+    const payment = paymentByBid.get(bid._id.toString());
+    return { ...bid, payment: payment && { id: payment._id.toString(), status: payment.status } };
+  });
+  return c.json(withPayment);
 });
 
 // Bids for a vehicle

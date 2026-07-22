@@ -3,9 +3,11 @@ import "./mocks/stripe";
 import { describe, expect, test } from "bun:test";
 import { createApp } from "../app";
 import { Bid } from "../models/Bid";
+import { Payment } from "../models/Payment";
 import { Vehicle } from "../models/Vehicle";
 import { setupTestDB } from "./db";
 import { authHeader, createBid, createUser, createVehicle } from "./factories";
+import { markSessionPaid } from "./mocks/stripe";
 
 setupTestDB();
 const app = createApp();
@@ -90,5 +92,36 @@ describe("reglas de negocio de pujas", () => {
     expect(res.status).toBe(200);
     expect((await Bid.findById(alta._id))!.status).toBe("winner");
     expect((await Bid.findById(baja._id))!.status).toBe("outbid");
+  });
+});
+
+describe("GET /api/bids/my/purchases", () => {
+  // Regresión: la ruta tenía su propia consulta inline que nunca adjuntaba
+  // el pago, dejando el botón "Ver recibo" del frontend (MyPurchasesPage)
+  // permanentemente sin funcionar — bid.payment llegaba undefined siempre.
+  test("cada compra trae payment: {id, status} para habilitar el enlace al recibo", async () => {
+    const buyer = await createUser();
+    const vehicle = await createVehicle();
+    const bid = await createBid(vehicle, buyer, { amount: 12_000, status: "winner" });
+
+    const checkout = await app.request("/api/payments/create-checkout-session", {
+      method: "POST",
+      headers: authHeader(buyer),
+      body: JSON.stringify({ bidId: bid._id.toString() }),
+    });
+    expect(checkout.status).toBe(200);
+    const payment = (await Payment.findOne({ bidId: bid._id }))!;
+    markSessionPaid(payment.stripeSessionId!);
+    await app.request(`/api/payments/success?session_id=${payment.stripeSessionId}`, {
+      headers: authHeader(buyer),
+    });
+
+    const res = await app.request("/api/bids/my/purchases", { headers: authHeader(buyer) });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { payment?: { id: string; status: string } }[];
+    expect(body).toHaveLength(1);
+    expect(body[0]!.payment).toBeDefined();
+    expect(body[0]!.payment!.id).toBe(payment._id.toString());
+    expect(body[0]!.payment!.status).toBe("paid");
   });
 });
