@@ -41,7 +41,7 @@ export default function ExportCsvButton<T>({ data, filename, columns }: Props<T>
   }
 
   return (
-    <Button variant="secondary" size="sm" onClick={handleExport} disabled={data.length === 0}>
+    <Button type="button" variant="secondary" size="sm" onClick={handleExport} disabled={data.length === 0}>
       Exportar CSV
     </Button>
   );

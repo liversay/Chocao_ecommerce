@@ -52,6 +52,11 @@ export default function DataTable<T extends { _id?: string }>({
 
   function toggleSort(col: Column<T>) {
     if (!col.sortKey) return;
+    if (typeof col.accessor === "function" && !col.sortValue) {
+      console.warn(
+        `DataTable: column "${col.header}" has sortKey but no sortValue for its function accessor — sorting will not work correctly`
+      );
+    }
     setSort((prev) => {
       if (!prev || prev.key !== col.sortKey) return { key: col.sortKey!, dir: "asc" };
       return { key: col.sortKey!, dir: prev.dir === "asc" ? "desc" : "asc" };
@@ -117,13 +122,13 @@ export default function DataTable<T extends { _id?: string }>({
             padding: "var(--sp-4) 0",
           }}
         >
-          <Button variant="ghost" size="sm" disabled={page! <= 1} onClick={() => onPageChange!(page! - 1)}>
+          <Button type="button" variant="ghost" size="sm" disabled={page! <= 1} onClick={() => onPageChange!(page! - 1)}>
             ← Anterior
           </Button>
           <span style={{ fontSize: "var(--t-sm)", color: "var(--text-muted)" }}>
             Página {page} de {pages}
           </span>
-          <Button variant="ghost" size="sm" disabled={page! >= pages!} onClick={() => onPageChange!(page! + 1)}>
+          <Button type="button" variant="ghost" size="sm" disabled={page! >= pages!} onClick={() => onPageChange!(page! + 1)}>
             Siguiente →
           </Button>
         </div>
