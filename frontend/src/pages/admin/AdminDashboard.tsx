@@ -7,6 +7,10 @@ import DataTable from "../../components/DataTable";
 import StatusBadge from "../../components/StatusBadge";
 import PageHeader from "../../components/PageHeader";
 import LoadingState from "../../components/LoadingState";
+import AdminStatCard from "../../components/AdminStatCard";
+import DateRangePicker from "../../components/admin/DateRangePicker";
+import RevenueAreaChart from "../../components/admin/charts/RevenueAreaChart";
+import BidsBarChart from "../../components/admin/charts/BidsBarChart";
 import type { DashboardSummary } from "../../types";
 
 interface RecentVehicle {
@@ -27,25 +31,47 @@ interface TopBid {
   createdAt: string;
 }
 
+interface Analytics {
+  revenueByDay: { date: string; value: number }[];
+  bidsByDay: { date: string; value: number }[];
+  averageTicket: number;
+  adjudicationRate: number;
+}
+
+function isoDaysAgo(days: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  return d.toISOString().slice(0, 10);
+}
+
 export default function AdminDashboard() {
   const api = useApi();
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
+  const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [recentVehicles, setRecentVehicles] = useState<RecentVehicle[]>([]);
   const [topBids, setTopBids] = useState<TopBid[]>([]);
   const [loading, setLoading] = useState(true);
+  const [range, setRange] = useState({ from: isoDaysAgo(30), to: isoDaysAgo(0) });
 
   useEffect(() => {
-    Promise.all([api.get("/api/dashboard/summary"), api.get("/api/dashboard/reports")])
-      .then(([sumRes, repRes]) => {
+    setLoading(true);
+    const params = new URLSearchParams({ from: range.from, to: range.to });
+    Promise.all([
+      api.get("/api/dashboard/summary"),
+      api.get("/api/dashboard/reports"),
+      api.get(`/api/dashboard/analytics?${params}`),
+    ])
+      .then(([sumRes, repRes, anaRes]) => {
         setSummary(sumRes.data);
         setRecentVehicles(repRes.data.recentVehicles);
         setTopBids(repRes.data.topBids);
+        setAnalytics(anaRes.data);
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, []);
+  }, [range.from, range.to]);
 
-  if (loading) return <LoadingState message="Cargando dashboard..." />;
+  if (loading && !summary) return <LoadingState message="Cargando dashboard..." />;
 
   return (
     <div className="fade-in">
@@ -53,38 +79,40 @@ export default function AdminDashboard() {
         eyebrow="Panel administrativo"
         title="Dashboard"
         subtitle="Resumen general del sistema y métricas en tiempo real"
+        actions={<DateRangePicker from={range.from} to={range.to} onChange={setRange} />}
       />
 
       {summary && (
-        <div className="kpi-row" style={{ marginBottom: "var(--sp-6)" }}>
-          <div className="kpi">
-            <p className="kpi-value">{summary.totalVehicles}</p>
-            <p className="kpi-label">Vehículos totales</p>
-          </div>
-          <div className="kpi">
-            <p className="kpi-value">{summary.activeAuctions}</p>
-            <p className="kpi-label">Subastas activas</p>
-          </div>
-          <div className="kpi">
-            <p className="kpi-value">{summary.awardedVehicles}</p>
-            <p className="kpi-label">Adjudicados</p>
-          </div>
-          <div className="kpi">
-            <p className="kpi-value">{summary.totalBids}</p>
-            <p className="kpi-label">Total pujas</p>
-          </div>
-          <div className="kpi">
-            <p className="kpi-value">{summary.totalUsers}</p>
-            <p className="kpi-label">Usuarios</p>
-          </div>
-          <div className="kpi">
-            <p className="kpi-value mono">${summary.totalRevenue.toLocaleString()}</p>
-            <p className="kpi-label">Recaudado</p>
-          </div>
+        <div className="kpi-row" style={{ marginBottom: "var(--sp-5)" }}>
+          <AdminStatCard label="Vehículos totales" value={summary.totalVehicles} />
+          <AdminStatCard label="Subastas activas" value={summary.activeAuctions} />
+          <AdminStatCard label="Adjudicados" value={summary.awardedVehicles} />
+          <AdminStatCard label="Total pujas" value={summary.totalBids} />
+          <AdminStatCard label="Usuarios" value={summary.totalUsers} />
+          <AdminStatCard label="Recaudado" value={`$${summary.totalRevenue.toLocaleString()}`} />
         </div>
       )}
 
-      {/* Two-column tables */}
+      {analytics && (
+        <div className="kpi-row" style={{ marginBottom: "var(--sp-6)" }}>
+          <AdminStatCard label="Ticket promedio" value={`$${Math.round(analytics.averageTicket).toLocaleString()}`} hint="En el rango seleccionado" />
+          <AdminStatCard label="Tasa de adjudicación" value={`${Math.round(analytics.adjudicationRate * 100)}%`} hint="En el rango seleccionado" />
+        </div>
+      )}
+
+      {analytics && (
+        <div className="grid-2" style={{ gap: "var(--sp-4)", marginBottom: "var(--sp-6)" }}>
+          <Card padding="lg">
+            <h2 style={{ fontSize: "var(--t-md)", marginBottom: "var(--sp-4)" }}>Ingresos por día</h2>
+            <RevenueAreaChart data={analytics.revenueByDay} />
+          </Card>
+          <Card padding="lg">
+            <h2 style={{ fontSize: "var(--t-md)", marginBottom: "var(--sp-4)" }}>Pujas por día</h2>
+            <BidsBarChart data={analytics.bidsByDay} />
+          </Card>
+        </div>
+      )}
+
       <div className="grid-2" style={{ gap: "var(--sp-4)" }}>
         <Card>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--sp-4)" }}>
