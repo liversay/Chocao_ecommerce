@@ -4,14 +4,28 @@ import { requireAuth, requirePermission, verifyClerkToken } from "../middlewares
 import { rateLimit } from "../middlewares/rateLimit";
 import { NotFoundError, UnauthorizedError } from "../lib/errors";
 import { idParamSchema, validate } from "../schemas/common";
-import { patchRoleSchema, syncUserSchema } from "../schemas/users";
+import { listUsersQuerySchema, patchRoleSchema, syncUserSchema, updateProfileSchema } from "../schemas/users";
 import { recordAudit } from "../services/audit";
+import { listUsers } from "../services/users";
 import { User } from "../models/User";
 
 const users = new Hono<AppEnv>();
 
 users.get("/me", requireAuth, async (c) => {
   return c.json(c.get("user"));
+});
+
+users.get("/", requirePermission("users:read"), validate("query", listUsersQuerySchema), async (c) => {
+  return c.json(await listUsers(c.req.valid("query")));
+});
+
+users.patch("/me", requireAuth, validate("json", updateProfileSchema), async (c) => {
+  const user = c.get("user");
+  const { phone, notificationPrefs } = c.req.valid("json");
+  if (phone !== undefined) user.phone = phone;
+  if (notificationPrefs) Object.assign(user.notificationPrefs, notificationPrefs);
+  await user.save();
+  return c.json(user);
 });
 
 // Sincroniza el usuario de Clerk en Mongo. Exige un token válido de Clerk y

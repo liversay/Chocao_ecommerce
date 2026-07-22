@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useApi } from "../hooks/useApi";
 import Card from "../components/Card";
 import Button from "../components/Button";
@@ -14,6 +14,7 @@ const CAR_PLACEHOLDER = "https://images.unsplash.com/photo-1549317661-bd32c8ce0d
 
 export default function MyPurchasesPage() {
   const api = useApi();
+  const navigate = useNavigate();
   const [purchases, setPurchases] = useState<Bid[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -119,6 +120,16 @@ export default function MyPurchasesPage() {
               {
                 header: "Estado",
                 accessor: () => <StatusBadge status="paid" />,
+              },
+              {
+                header: "",
+                align: "right",
+                accessor: (bid) =>
+                  bid.payment ? (
+                    <Button variant="ghost" size="sm" onClick={() => navigate(`/receipt/${bid.payment!.id}`)}>
+                      Ver recibo
+                    </Button>
+                  ) : null,
               },
             ]}
             data={purchases}

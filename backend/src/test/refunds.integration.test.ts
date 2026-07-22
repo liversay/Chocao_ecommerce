@@ -55,7 +55,7 @@ describe("reembolsos (HU-19)", () => {
 
     const audit = await AuditLog.findOne({ action: "payment.refund" });
     expect(audit).not.toBeNull();
-    expect(audit!.actor.toString()).toBe(admin._id.toString());
+    expect(audit!.actor!.toString()).toBe(admin._id.toString());
   });
 
   test("un customer no puede reembolsar (403, requiere payment:refund)", async () => {

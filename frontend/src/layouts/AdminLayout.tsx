@@ -12,11 +12,16 @@ const navGroups = [
       { to: "/admin", label: "Dashboard", icon: "▤", end: true },
       { to: "/admin/vehicles", label: "Vehículos", icon: "▦", end: false },
       { to: "/admin/bids", label: "Pujas", icon: "◈", end: false },
+      { to: "/admin/users", label: "Usuarios", icon: "☺", end: false },
+      { to: "/admin/orders", label: "Órdenes", icon: "$", end: false },
     ],
   },
   {
     label: "Análisis",
-    items: [{ to: "/admin/reports", label: "Reportes", icon: "▣", end: false }],
+    items: [
+      { to: "/admin/reports", label: "Reportes", icon: "▣", end: false },
+      { to: "/admin/audit", label: "Auditoría", icon: "⎘", end: false },
+    ],
   },
 ];
 

@@ -4,5 +4,6 @@ dist/
 .env.example
 *.local
 .DS_Store
+.worktrees/
 playwright-report/
 test-results/

@@ -1,7 +1,8 @@
 import mongoose, { type HydratedDocument, Types } from "mongoose";
 
 export interface IAuditLog {
-  actor: Types.ObjectId;
+  // Sin actor = acción del sistema (source "job")
+  actor?: Types.ObjectId;
   actorEmail?: string;
   action: string;
   resource: string;
@@ -17,7 +18,7 @@ export type AuditLogDoc = HydratedDocument<IAuditLog>;
 
 const auditLogSchema = new mongoose.Schema<IAuditLog>(
   {
-    actor: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    actor: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     actorEmail: { type: String },
     action: { type: String, required: true },
     resource: { type: String, required: true },

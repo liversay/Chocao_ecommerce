@@ -3,7 +3,8 @@ import { logger } from "../lib/logger";
 import type { UserDoc } from "../models/User";
 
 export interface AuditEntry {
-  actor: UserDoc;
+  // Sin actor = acción del sistema (jobs)
+  actor?: UserDoc;
   action: string;
   resource: string;
   resourceId?: string;
@@ -19,8 +20,8 @@ export interface AuditEntry {
 export async function recordAudit(entry: AuditEntry) {
   try {
     await AuditLog.create({
-      actor: entry.actor._id,
-      actorEmail: entry.actor.email,
+      actor: entry.actor?._id,
+      actorEmail: entry.actor?.email ?? "sistema",
       action: entry.action,
       resource: entry.resource,
       resourceId: entry.resourceId,

@@ -98,7 +98,7 @@ describe("RBAC en rutas reales", () => {
     expect(entry).not.toBeNull();
     expect(entry!.before).toEqual({ role: "customer" });
     expect(entry!.after).toEqual({ role: "admin" });
-    expect(entry!.actor.toString()).toBe(admin!._id.toString());
+    expect(entry!.actor!.toString()).toBe(admin!._id.toString());
   });
 
   test("la auditoría es de solo-anexado también con documentos reales", async () => {

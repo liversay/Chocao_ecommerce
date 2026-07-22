@@ -17,14 +17,22 @@ import CatalogPage from "./pages/CatalogPage";
 import VehicleDetailPage from "./pages/VehicleDetailPage";
 import MyBidsPage from "./pages/MyBidsPage";
 import MyPurchasesPage from "./pages/MyPurchasesPage";
+import MyWatchlistPage from "./pages/MyWatchlistPage";
+import AccountPage from "./pages/AccountPage";
+import NotificationsPage from "./pages/NotificationsPage";
 import CheckoutResultPage from "./pages/CheckoutResultPage";
+import ReceiptPage from "./pages/ReceiptPage";
 import TermsPage from "./pages/TermsPage";
 import PrivacyPage from "./pages/PrivacyPage";
 import ContactPage from "./pages/ContactPage";
+import McpConsentPage from "./pages/McpConsentPage";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminVehicles from "./pages/admin/AdminVehicles";
 import AdminBids from "./pages/admin/AdminBids";
 import AdminReports from "./pages/admin/AdminReports";
+import AdminUsers from "./pages/admin/AdminUsers";
+import AdminOrders from "./pages/admin/AdminOrders";
+import AdminAudit from "./pages/admin/AdminAudit";
 
 function SyncUser() {
   const { isSignedIn, isLoaded } = useAuth();
@@ -78,6 +86,38 @@ export default function App() {
             }
           />
           <Route
+            path="/notifications"
+            element={
+              <ProtectedRoute>
+                <NotificationsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/watchlist"
+            element={
+              <ProtectedRoute>
+                <MyWatchlistPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/account"
+            element={
+              <ProtectedRoute>
+                <AccountPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/receipt/:paymentId"
+            element={
+              <ProtectedRoute>
+                <ReceiptPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/checkout/success"
             element={
               <ProtectedRoute>
@@ -90,6 +130,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <CheckoutResultPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/mcp-consent"
+            element={
+              <ProtectedRoute>
+                <McpConsentPage />
               </ProtectedRoute>
             }
           />
@@ -108,6 +156,9 @@ export default function App() {
           <Route path="vehicles" element={<AdminVehicles />} />
           <Route path="bids" element={<AdminBids />} />
           <Route path="reports" element={<AdminReports />} />
+          <Route path="users" element={<AdminUsers />} />
+          <Route path="orders" element={<AdminOrders />} />
+          <Route path="audit" element={<AdminAudit />} />
         </Route>
       </Routes>
       </ErrorBoundary>

@@ -47,4 +47,16 @@ export const migrations: Migration[] = [
       );
     },
   },
+  {
+    version: 3,
+    name: "notificaciones-y-watchlist",
+    up: async (connection) => {
+      const db = connection.db!;
+      await db.collection("notifications").createIndex({ userId: 1, createdAt: -1 });
+      await db.collection("notifications").createIndex({ userId: 1, read: 1 });
+      await db
+        .collection("watchlists")
+        .createIndex({ userId: 1, vehicleId: 1 }, { unique: true });
+    },
+  },
 ];

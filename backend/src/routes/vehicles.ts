@@ -10,21 +10,17 @@ import {
   updateVehicleSchema,
 } from "../schemas/vehicles";
 import { recordAudit } from "../services/audit";
+import { setVehicleStatus } from "../services/auctions";
+import { invalidateCatalog, listVehicles } from "../services/vehicles";
 import { Vehicle } from "../models/Vehicle";
-import { Bid } from "../models/Bid";
 
 const vehicles = new Hono<AppEnv>();
 
+// Catálogo público paginado con filtros indexados y caché (services/vehicles).
+// Los borradores nunca se exponen aquí (includeDrafts solo en flujos admin).
 vehicles.get("/", validate("query", listVehiclesQuerySchema), async (c) => {
-  const { status } = c.req.valid("query");
-  const filter: Record<string, unknown> = {};
-  if (!status || status === "all") {
-    filter.status = { $in: ["published", "active", "closed", "awarded"] };
-  } else {
-    filter.status = status;
-  }
-  const list = await Vehicle.find(filter).sort({ createdAt: -1 });
-  return c.json(list);
+  const result = await listVehicles({ ...c.req.valid("query"), includeDrafts: false });
+  return c.json(result);
 });
 
 // Admin-only: all vehicles including draft
@@ -48,6 +44,7 @@ vehicles.post("/", requirePermission("vehicle:write"), validate("json", createVe
     currentPrice: body.basePrice,
     createdBy: admin._id,
   });
+  invalidateCatalog();
   return c.json(vehicle, 201);
 });
 
@@ -61,6 +58,7 @@ vehicles.put(
       returnDocument: "after",
     });
     if (!vehicle) throw new NotFoundError("Vehículo no encontrado");
+    invalidateCatalog();
     return c.json(vehicle);
   }
 );
@@ -68,6 +66,7 @@ vehicles.put(
 vehicles.delete("/:id", requirePermission("vehicle:write"), validate("param", idParamSchema), async (c) => {
   const vehicle = await Vehicle.findByIdAndDelete(c.req.valid("param").id);
   if (!vehicle) throw new NotFoundError("Vehículo no encontrado");
+  invalidateCatalog();
 
   await recordAudit({
     actor: c.get("user"),
@@ -88,44 +87,12 @@ vehicles.patch(
   validate("json", patchVehicleStatusSchema),
   async (c) => {
     const { status } = c.req.valid("json");
-    const vehicleId = c.req.valid("param").id;
-
-    const vehicle = await Vehicle.findById(vehicleId);
-    if (!vehicle) throw new NotFoundError("Vehículo no encontrado");
-
-    const previousStatus = vehicle.status;
-    vehicle.status = status;
-    await vehicle.save();
-
-    // When the auction transitions to closed/awarded, mark the highest bid as winner
-    // and the rest as outbid. Idempotent — safe to re-run if the admin toggles status.
-    let winnerBidId: string | undefined;
-    if (status === "closed" || status === "awarded") {
-      const highestBid = await Bid.findOne({ vehicleId }).sort({ amount: -1 });
-
-      if (highestBid) {
-        // All other bids on this vehicle become outbid
-        await Bid.updateMany(
-          { vehicleId, _id: { $ne: highestBid._id } },
-          { status: "outbid" }
-        );
-        // The highest one is the winner
-        highestBid.status = "winner";
-        await highestBid.save();
-        winnerBidId = highestBid._id.toString();
-      }
-    }
-
-    await recordAudit({
-      actor: c.get("user"),
-      action: "vehicle.status.change",
-      resource: "vehicle",
-      resourceId: vehicle._id.toString(),
-      before: { status: previousStatus },
-      after: { status, ...(winnerBidId ? { winnerBidId } : {}) },
-      requestId: c.get("requestId"),
-    });
-
+    const { vehicle } = await setVehicleStatus(
+      c.get("user"),
+      c.req.valid("param").id,
+      status,
+      c.get("requestId")
+    );
     return c.json(vehicle);
   }
 );

@@ -3,6 +3,7 @@ import { useAuth } from "@clerk/react";
 import Button from "./Button";
 import Logo from "./Logo";
 import UserMenu from "./UserMenu";
+import NotificationBell from "./NotificationBell";
 import { useEffect, useState } from "react";
 import { useApi } from "../hooks/useApi";
 
@@ -108,6 +109,7 @@ export default function Navbar() {
                   </Button>
                 </Link>
               )}
+              <NotificationBell />
               <UserMenu />
             </>
           ) : (

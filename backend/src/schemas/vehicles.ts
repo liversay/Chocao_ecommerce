@@ -38,4 +38,10 @@ export const patchVehicleStatusSchema = z.object({ status: vehicleStatusSchema }
 
 export const listVehiclesQuerySchema = z.object({
   status: z.enum(["all", "draft", "published", "active", "closed", "awarded"], "Estado inválido").optional(),
+  brand: z.string().trim().max(60).optional(),
+  minPrice: z.coerce.number("El precio mínimo debe ser numérico").nonnegative().optional(),
+  maxPrice: z.coerce.number("El precio máximo debe ser numérico").nonnegative().optional(),
+  q: z.string().trim().max(100).optional(),
+  page: z.coerce.number("La página debe ser numérica").int().min(1).default(1),
+  limit: z.coerce.number("El límite debe ser numérico").int().min(1).max(50).default(12),
 });

@@ -24,8 +24,8 @@ export default function Landing() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
 
   useEffect(() => {
-    axios.get(`${BASE_URL}/api/vehicles`)
-      .then((r) => setVehicles(r.data))
+    axios.get(`${BASE_URL}/api/vehicles?limit=50`)
+      .then((r) => setVehicles(r.data.items ?? r.data))
       .catch(() => {});
   }, []);
 

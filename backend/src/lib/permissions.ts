@@ -8,12 +8,15 @@ export const PERMISSIONS = [
   "bids:read", // ver las pujas propias
   "bids:write", // pujar
   "payments:write", // iniciar checkout de pujas propias
+  "payments:read", // listar pagos/órdenes (backoffice)
   "payment:refund", // reembolsar pagos (finanzas)
   "vehicle:write", // CRUD y ciclo de vida de vehículos (catálogo)
   "dashboard:read", // KPIs del dashboard
   "report:read", // reportes y actividad global (todas las pujas)
   "users:manage", // cambiar roles de usuarios
+  "users:read", // listar usuarios (backoffice)
   "audit:read", // consultar el registro de auditoría
+  "mcp:manage", // revocar clientes MCP comprometidos (HU-60)
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];

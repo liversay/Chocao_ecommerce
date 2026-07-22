@@ -3,10 +3,11 @@ import { logger } from "../lib/logger";
 import { assertOwner } from "../lib/ownership";
 import stripe from "../lib/stripe";
 import { Bid } from "../models/Bid";
-import { Payment, type PaymentDoc } from "../models/Payment";
+import { Payment, type IPayment, type PaymentDoc } from "../models/Payment";
 import type { UserDoc } from "../models/User";
 import { Vehicle, type VehicleDoc } from "../models/Vehicle";
 import { recordAudit } from "./audit";
+import { notify } from "./notifications";
 
 // Crea (o reutiliza) la sesión de Stripe Checkout de un bid ganador.
 // Idempotencia end-to-end (HU-18):
@@ -22,6 +23,9 @@ export async function createCheckout(user: UserDoc, bidId: string): Promise<{ ur
 
   if (bid.status === "paid") {
     throw new ConflictError("Esta puja ya fue pagada");
+  }
+  if (bid.status !== "winner") {
+    throw new ConflictError("Solo se puede pagar una puja ganadora");
   }
 
   const existing = await Payment.findOne({ bidId: bid._id, status: "pending" });
@@ -132,6 +136,15 @@ export async function confirmCheckoutSession(
     sessionId: session.id,
   });
 
+  const vehicle = await Vehicle.findById(claimed.vehicleId).select("title");
+  await notify({
+    userId: claimed.userId,
+    type: "payment_confirmed",
+    title: "Pago confirmado",
+    body: `Tu pago de $${claimed.amount.toLocaleString()} por "${vehicle?.title ?? "el vehículo"}" fue confirmado.`,
+    data: { vehicleId: claimed.vehicleId.toString(), bidId: claimed.bidId.toString(), paymentId: claimed._id.toString() },
+  });
+
   return { payment: claimed, transitioned: true };
 }
 
@@ -188,5 +201,76 @@ export async function refundPayment(
     actor: actor._id.toString(),
   });
 
+  const vehicle = await Vehicle.findById(payment.vehicleId).select("title");
+  await notify({
+    userId: payment.userId,
+    type: "refunded",
+    title: "Tu pago fue reembolsado",
+    body: `El pago de $${payment.amount.toLocaleString()} por "${vehicle?.title ?? "el vehículo"}" fue reembolsado.`,
+    data: { vehicleId: payment.vehicleId.toString(), bidId: payment.bidId.toString(), paymentId: payment._id.toString() },
+  });
+
   return payment;
+}
+
+export interface Receipt {
+  paymentId: string;
+  amount: number;
+  paidAt: Date;
+  buyerName: string;
+  buyerEmail: string;
+  vehicle: { title: string; brand: string; model: string; year: number };
+  stripeSessionId?: string;
+}
+
+// Recibo de un pago completado (comprador dueño únicamente). paidAt usa
+// createdAt del Payment: el modelo no tiene un campo separado para el
+// momento de confirmación, y el registro solo existe una vez creado en
+// createCheckout (createdAt ≈ momento del intento de pago, suficientemente
+// preciso para un recibo).
+export async function getReceipt(paymentId: string, user: UserDoc): Promise<Receipt> {
+  const payment = await Payment.findById(paymentId).populate<{ vehicleId: VehicleDoc }>("vehicleId");
+  if (!payment) throw new NotFoundError("Pago no encontrado");
+  assertOwner(payment.userId, user, "No tienes permisos sobre este recibo");
+  if (payment.status !== "paid") {
+    throw new ConflictError("El recibo solo está disponible para pagos completados");
+  }
+
+  const vehicle = payment.vehicleId;
+  return {
+    paymentId: payment._id.toString(),
+    amount: payment.amount,
+    paidAt: payment.createdAt,
+    buyerName: user.name,
+    buyerEmail: user.email,
+    vehicle: { title: vehicle.title, brand: vehicle.brand, model: vehicle.model, year: vehicle.year },
+    stripeSessionId: payment.stripeSessionId,
+  };
+}
+
+export interface ListPaymentsParams {
+  status?: IPayment["status"];
+  from?: Date;
+  to?: Date;
+  page?: number;
+  limit?: number;
+}
+
+// Listado de pagos/órdenes para el backoffice, filtrable por estado y rango
+// de fecha, con comprador y vehículo poblados para la tabla.
+export async function listPayments({ status, from, to, page = 1, limit = 20 }: ListPaymentsParams) {
+  const filter: Record<string, unknown> = {};
+  if (status) filter.status = status;
+  if (from || to) filter.createdAt = { ...(from ? { $gte: from } : {}), ...(to ? { $lte: to } : {}) };
+
+  const [items, total] = await Promise.all([
+    Payment.find(filter)
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .populate("userId", "name email")
+      .populate("vehicleId", "title brand model"),
+    Payment.countDocuments(filter),
+  ]);
+  return { items, total, page, pages: Math.max(1, Math.ceil(total / limit)) };
 }

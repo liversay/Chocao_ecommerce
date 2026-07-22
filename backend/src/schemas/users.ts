@@ -8,3 +8,22 @@ export const syncUserSchema = z.object({
 export const patchRoleSchema = z.object({
   role: z.enum(["customer", "admin"], "Rol inválido"),
 });
+
+export const updateProfileSchema = z.object({
+  phone: z.string().trim().max(30).optional(),
+  notificationPrefs: z
+    .object({
+      outbid: z.boolean().optional(),
+      won: z.boolean().optional(),
+      payment: z.boolean().optional(),
+      watchClosing: z.boolean().optional(),
+    })
+    .optional(),
+});
+
+export const listUsersQuerySchema = z.object({
+  q: z.string().trim().max(100).optional(),
+  role: z.enum(["customer", "admin"]).optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+});

@@ -11,6 +11,7 @@ import StatusBadge from "../components/StatusBadge";
 import LoadingState from "../components/LoadingState";
 import EmptyState from "../components/EmptyState";
 import Countdown from "../components/Countdown";
+import WatchlistButton from "../components/WatchlistButton";
 import { CONDITION_LABELS } from "../lib/labels";
 import type { Vehicle, Bid } from "../types";
 
@@ -153,7 +154,10 @@ export default function VehicleDetailPage() {
                 </p>
                 <h1 style={{ fontSize: "var(--t-2xl)" }}>{vehicle.title}</h1>
               </div>
-              <StatusBadge status={vehicle.status} />
+              <div style={{ display: "flex", alignItems: "center", gap: "var(--sp-3)" }}>
+                <StatusBadge status={vehicle.status} />
+                {isSignedIn && <WatchlistButton vehicleId={vehicle._id} />}
+              </div>
             </div>
 
             <DataTable<Spec>

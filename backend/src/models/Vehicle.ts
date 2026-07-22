@@ -15,6 +15,7 @@ export interface IVehicle {
   status: "draft" | "published" | "active" | "closed" | "awarded";
   auctionStartDate?: Date;
   auctionEndDate?: Date;
+  closingSoonNotifiedAt?: Date;
   createdBy?: Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
@@ -42,6 +43,7 @@ const vehicleSchema = new mongoose.Schema<IVehicle>(
     },
     auctionStartDate: { type: Date },
     auctionEndDate: { type: Date },
+    closingSoonNotifiedAt: { type: Date },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   },
   { timestamps: true }

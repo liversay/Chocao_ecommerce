@@ -28,8 +28,17 @@ export default function AdminRoute({ children }: Props) {
 
   if (!isLoaded || checking) {
     return (
-      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "60vh" }}>
-        <p style={{ color: "rgba(240,244,255,0.5)" }}>Verificando permisos...</p>
+      <div
+        className="admin-theme"
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          minHeight: "100vh",
+          background: "var(--bg)",
+        }}
+      >
+        <p style={{ color: "var(--text-muted)" }}>Verificando permisos...</p>
       </div>
     );
   }
