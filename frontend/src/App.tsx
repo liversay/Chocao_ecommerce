@@ -30,6 +30,9 @@ import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminVehicles from "./pages/admin/AdminVehicles";
 import AdminBids from "./pages/admin/AdminBids";
 import AdminReports from "./pages/admin/AdminReports";
+import AdminUsers from "./pages/admin/AdminUsers";
+import AdminOrders from "./pages/admin/AdminOrders";
+import AdminAudit from "./pages/admin/AdminAudit";
 
 function SyncUser() {
   const { isSignedIn, isLoaded } = useAuth();
@@ -153,6 +156,9 @@ export default function App() {
           <Route path="vehicles" element={<AdminVehicles />} />
           <Route path="bids" element={<AdminBids />} />
           <Route path="reports" element={<AdminReports />} />
+          <Route path="users" element={<AdminUsers />} />
+          <Route path="orders" element={<AdminOrders />} />
+          <Route path="audit" element={<AdminAudit />} />
         </Route>
       </Routes>
       </ErrorBoundary>
