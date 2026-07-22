@@ -1,6 +1,7 @@
 // frontend/src/pages/admin/AdminOrders.tsx
 import { useEffect, useState } from "react";
 import { useApi } from "../../hooks/useApi";
+import { useRealtimeRefetch } from "../../hooks/useRealtimeRefetch";
 import Card from "../../components/Card";
 import Button from "../../components/Button";
 import Select from "../../components/Select";
@@ -58,6 +59,7 @@ export default function AdminOrders() {
   }
 
   useEffect(load, [status, range.from, range.to, page]);
+  useRealtimeRefetch(["order.updated"], load);
 
   async function confirmRefund() {
     if (!pendingRefund) return;

@@ -5,6 +5,7 @@ import { Payment } from "../models/Payment";
 import type { UserDoc } from "../models/User";
 import { Vehicle } from "../models/Vehicle";
 import { notifyMany } from "./notifications";
+import { publishPublic } from "./realtime";
 import { invalidateCatalog } from "./vehicles";
 
 // Registra una puja con control de concurrencia optimista. La reutilizan la
@@ -74,6 +75,18 @@ export async function placeBid(user: UserDoc, vehicleId: string, amount: number)
 
   invalidateCatalog();
   metrics.increment("chocao_bids_total");
+
+  // Público: cualquier visitante viendo este vehículo (logueado o no) ve el
+  // precio/historial actualizarse sin recargar.
+  publishPublic({
+    type: "bid.placed",
+    payload: {
+      vehicleId: vehicle._id.toString(),
+      currentPrice: claimed.currentPrice,
+      amount,
+      createdAt: bid.createdAt,
+    },
+  });
 
   if (outbidUserIds.length > 0) {
     await notifyMany(outbidUserIds, "outbid", () => ({

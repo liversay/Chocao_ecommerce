@@ -11,6 +11,7 @@ import {
 } from "../schemas/vehicles";
 import { recordAudit } from "../services/audit";
 import { setVehicleStatus } from "../services/auctions";
+import { publishPublic } from "../services/realtime";
 import { invalidateCatalog, listVehicles } from "../services/vehicles";
 import { Vehicle } from "../models/Vehicle";
 
@@ -45,6 +46,7 @@ vehicles.post("/", requirePermission("vehicle:write"), validate("json", createVe
     createdBy: admin._id,
   });
   invalidateCatalog();
+  publishPublic({ type: "vehicle.updated", payload: { vehicleId: vehicle._id.toString() } });
   return c.json(vehicle, 201);
 });
 
@@ -59,6 +61,7 @@ vehicles.put(
     });
     if (!vehicle) throw new NotFoundError("Vehículo no encontrado");
     invalidateCatalog();
+    publishPublic({ type: "vehicle.updated", payload: { vehicleId: vehicle._id.toString() } });
     return c.json(vehicle);
   }
 );
@@ -67,6 +70,7 @@ vehicles.delete("/:id", requirePermission("vehicle:write"), validate("param", id
   const vehicle = await Vehicle.findByIdAndDelete(c.req.valid("param").id);
   if (!vehicle) throw new NotFoundError("Vehículo no encontrado");
   invalidateCatalog();
+  publishPublic({ type: "vehicle.removed", payload: { vehicleId: vehicle._id.toString() } });
 
   await recordAudit({
     actor: c.get("user"),

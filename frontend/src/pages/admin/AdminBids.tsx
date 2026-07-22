@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useApi } from "../../hooks/useApi";
+import { useRealtimeRefetch } from "../../hooks/useRealtimeRefetch";
 import Card from "../../components/Card";
 import DataTable from "../../components/DataTable";
 import StatusBadge from "../../components/StatusBadge";
@@ -13,12 +14,15 @@ export default function AdminBids() {
   const [bids, setBids] = useState<Bid[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  function load() {
     api.get("/api/bids")
       .then((r) => setBids(r.data))
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, []);
+  }
+
+  useEffect(load, []);
+  useRealtimeRefetch(["bid.placed"], load);
 
   return (
     <div className="fade-in">

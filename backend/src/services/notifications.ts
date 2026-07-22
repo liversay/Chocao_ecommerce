@@ -6,6 +6,7 @@ import { assertOwner } from "../lib/ownership";
 import { Notification, type INotification, type INotificationData, type NotificationDoc } from "../models/Notification";
 import { User, type INotificationPrefs, type UserDoc } from "../models/User";
 import { renderEmail } from "./emails";
+import { publishToUser } from "./realtime";
 
 export interface NotifyInput {
   userId: Types.ObjectId | string;
@@ -35,12 +36,24 @@ export async function notify(input: NotifyInput): Promise<void> {
     const prefKey = PREF_KEY_BY_TYPE[input.type];
     if (!user.notificationPrefs[prefKey]) return;
 
-    await Notification.create({
+    const notification = await Notification.create({
       userId: user._id,
       type: input.type,
       title: input.title,
       body: input.body,
       data: input.data ?? {},
+    });
+
+    publishToUser(user._id, {
+      type: "notification",
+      payload: {
+        id: notification._id.toString(),
+        type: notification.type,
+        title: notification.title,
+        body: notification.body,
+        data: notification.data,
+        createdAt: notification.createdAt,
+      },
     });
 
     const { subject, html } = renderEmail(input.title, input.body);

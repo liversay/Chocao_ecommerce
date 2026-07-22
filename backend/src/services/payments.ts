@@ -8,6 +8,7 @@ import type { UserDoc } from "../models/User";
 import { Vehicle, type VehicleDoc } from "../models/Vehicle";
 import { recordAudit } from "./audit";
 import { notify } from "./notifications";
+import { publishToAdmins } from "./realtime";
 
 // Crea (o reutiliza) la sesión de Stripe Checkout de un bid ganador.
 // Idempotencia end-to-end (HU-18):
@@ -136,6 +137,11 @@ export async function confirmCheckoutSession(
     sessionId: session.id,
   });
 
+  publishToAdmins({
+    type: "order.updated",
+    payload: { paymentId: claimed._id.toString(), status: "paid" },
+  });
+
   const vehicle = await Vehicle.findById(claimed.vehicleId).select("title");
   await notify({
     userId: claimed.userId,
@@ -199,6 +205,11 @@ export async function refundPayment(
     paymentId: payment._id.toString(),
     bidId: payment.bidId.toString(),
     actor: actor._id.toString(),
+  });
+
+  publishToAdmins({
+    type: "order.updated",
+    payload: { paymentId: payment._id.toString(), status: "refunded" },
   });
 
   const vehicle = await Vehicle.findById(payment.vehicleId).select("title");

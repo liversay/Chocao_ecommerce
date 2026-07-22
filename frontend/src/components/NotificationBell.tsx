@@ -1,7 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useApi } from "../hooks/useApi";
+import { useRealtime } from "../context/RealtimeContext";
 import type { AppNotification } from "../types";
+
+// Fallback si el stream SSE se cae y tarda en reconectar — el evento
+// "notification" en vivo ya cubre el caso normal (ver useRealtime().subscribe).
+const POLL_FALLBACK_MS = 120_000;
 
 const TYPE_ICON: Record<AppNotification["type"], string> = {
   outbid: "⚠",
@@ -24,6 +29,7 @@ function timeAgo(iso: string): string {
 export default function NotificationBell() {
   const api = useApi();
   const navigate = useNavigate();
+  const { unreadCount, subscribe } = useRealtime();
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<AppNotification[]>([]);
   const [unread, setUnread] = useState(0);
@@ -40,12 +46,38 @@ export default function NotificationBell() {
         .catch(() => {});
     }
     poll();
-    const id = setInterval(poll, 30_000);
+    const id = setInterval(poll, POLL_FALLBACK_MS);
     return () => {
       cancelled = true;
       clearInterval(id);
     };
   }, []);
+
+  // Cada conexión/reconexión SSE manda un snapshot fresco de no-leídas —
+  // resincroniza si el poll de arriba se perdió algo mientras el stream caía.
+  useEffect(() => {
+    setUnread(unreadCount);
+  }, [unreadCount]);
+
+  useEffect(() => {
+    return subscribe("notification", (payload) => {
+      setUnread((u) => u + 1);
+      setItems((prev) =>
+        [
+          {
+            _id: payload.id,
+            type: payload.type,
+            title: payload.title,
+            body: payload.body,
+            data: payload.data,
+            read: false,
+            createdAt: payload.createdAt,
+          },
+          ...prev,
+        ].slice(0, 5)
+      );
+    });
+  }, [subscribe]);
 
   useEffect(() => {
     function onClick(e: MouseEvent) {

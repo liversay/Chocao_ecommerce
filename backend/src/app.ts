@@ -7,6 +7,7 @@ import { errorHandler } from "./lib/errors";
 import { httpLogger, requestId } from "./middlewares/logging";
 import { rateLimit } from "./middlewares/rateLimit";
 import auditRouter from "./routes/audit";
+import eventsRouter from "./routes/events";
 import healthRouter from "./routes/health";
 import mcpRouter from "./mcp";
 import oauthRouter from "./oauth/router";
@@ -51,7 +52,12 @@ export function createApp() {
     })
   );
   // Límite global por IP; las rutas sensibles añaden límites más estrictos.
-  app.use("*", rateLimit({ name: "global", max: 300 }));
+  // /api/events (SSE) queda fuera: es una conexión larga, no una ráfaga de
+  // requests, y su propio límite vive en routes/events.ts — compartir el
+  // presupuesto global con reconexiones (por red inestable, JWT vencido, o
+  // incluso muchos visitantes anónimos detrás del mismo NAT) podía agotarlo
+  // y devolver 429 al resto de la API para ese cliente.
+  app.use("*", rateLimit({ name: "global", max: 300, skip: (c) => c.req.path === "/api/events" }));
 
   app.get("/", (c) => c.json({ message: "Chocao API running" }));
   app.route("/", healthRouter);
@@ -64,6 +70,7 @@ export function createApp() {
   app.route("/api/audit", auditRouter);
   app.route("/api/notifications", notificationsRouter);
   app.route("/api/watchlist", watchlistRouter);
+  app.route("/api/events", eventsRouter);
 
   // Servidor MCP (Streamable HTTP) + Authorization Server OAuth 2.1
   app.route("/", oauthRouter);

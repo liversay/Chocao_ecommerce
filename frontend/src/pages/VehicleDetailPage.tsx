@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import axios from "axios";
 import { useAuth } from "@clerk/react";
 import { useApi } from "../hooks/useApi";
+import { useRealtime } from "../context/RealtimeContext";
 import Card from "../components/Card";
 import Button from "../components/Button";
 import DataTable from "../components/DataTable";
@@ -28,12 +29,19 @@ export default function VehicleDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { isSignedIn } = useAuth();
   const api = useApi();
+  const { subscribe } = useRealtime();
 
   const [vehicle, setVehicle] = useState<Vehicle | null>(null);
   const [bids, setBids] = useState<Bid[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeImg, setActiveImg] = useState(0);
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; msg: string } | null>(null);
+  // currentPrice ya reflejado en pantalla — evita duplicar la fila del
+  // historial cuando el eco en vivo de la propia puja (canal público, le
+  // llega a todos incluido el postor) llega después de que loadData() ya
+  // trajo el mismo precio desde el backend. currentPrice es estrictamente
+  // creciente (regla de negocio), así que comparar por valor es seguro.
+  const lastAppliedPriceRef = useRef<number | null>(null);
 
   function loadData() {
     setLoading(true);
@@ -41,12 +49,41 @@ export default function VehicleDetailPage() {
       axios.get(`${BASE_URL}/api/vehicles/${id}`),
       axios.get(`${BASE_URL}/api/bids/vehicle/${id}`),
     ])
-      .then(([vRes, bRes]) => { setVehicle(vRes.data); setBids(bRes.data); })
+      .then(([vRes, bRes]) => {
+        setVehicle(vRes.data);
+        setBids(bRes.data);
+        lastAppliedPriceRef.current = vRes.data.currentPrice;
+      })
       .catch(console.error)
       .finally(() => setLoading(false));
   }
 
   useEffect(() => { loadData(); }, [id]);
+
+  // Precio/historial en vivo (canal público, funciona sin sesión): otro
+  // dispositivo pujando por este mismo vehículo actualiza esta pantalla sin
+  // recargar. Evita el re-fetch completo — solo aplica el delta recibido.
+  useEffect(() => {
+    if (!id) return;
+    const unsubBid = subscribe("bid.placed", (payload) => {
+      if (payload.vehicleId !== id) return;
+      if (lastAppliedPriceRef.current === payload.currentPrice) return; // ya aplicado (ver comentario arriba)
+      lastAppliedPriceRef.current = payload.currentPrice;
+      setVehicle((v) => (v ? { ...v, currentPrice: payload.currentPrice } : v));
+      setBids((prev) => [
+        { _id: `live-${payload.createdAt}`, vehicleId: id, userId: "", amount: payload.amount, status: "active", createdAt: payload.createdAt },
+        ...prev,
+      ]);
+    });
+    const unsubStatus = subscribe("vehicle.status", (payload) => {
+      if (payload.vehicleId !== id) return;
+      setVehicle((v) => (v ? { ...v, status: payload.status as Vehicle["status"] } : v));
+    });
+    return () => {
+      unsubBid();
+      unsubStatus();
+    };
+  }, [id, subscribe]);
 
   async function handleBid(amount: number) {
     await api.post(`/api/bids/vehicle/${id}`, { amount });
