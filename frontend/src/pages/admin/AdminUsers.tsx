@@ -55,9 +55,16 @@ export default function AdminUsers() {
 
   async function confirmRoleChange() {
     if (!pendingChange) return;
-    await api.patch(`/api/users/${pendingChange.user._id}/role`, { role: pendingChange.role });
-    setPendingChange(null);
-    load();
+    try {
+      await api.patch(`/api/users/${pendingChange.user._id}/role`, { role: pendingChange.role });
+    } catch (error) {
+      // El modal no debe quedarse colgado si el PATCH falla: se cierra y la
+      // tabla se recarga, con lo que el select vuelve al rol real del servidor.
+      console.error("Error al cambiar el rol:", error);
+    } finally {
+      setPendingChange(null);
+      load();
+    }
   }
 
   return (
