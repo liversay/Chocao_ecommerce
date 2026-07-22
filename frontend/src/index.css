@@ -230,6 +230,8 @@ h1, h2, h3, h4 {
 .badge-outbid    { color: var(--danger);      background: var(--danger-soft); }
 .badge-pending   { color: var(--warning);     background: var(--warning-soft); }
 .badge-paid      { color: var(--success);     background: var(--success-soft); }
+.badge-cancelled { color: var(--text-soft);   background: var(--bg-alt);       border-color: var(--border); }
+.badge-refunded  { color: var(--warning);     background: var(--warning-soft); }
 
 /* admin: chip rectangular compacto */
 .admin-theme .badge { border-radius: 4px; padding: 2px 8px; font-size: 10.5px; }

@@ -13,6 +13,8 @@ const labels: Record<string, string> = {
   outbid: "Superado",
   pending: "Pendiente",
   paid: "Pagado",
+  cancelled: "Cancelado",
+  refunded: "Reembolsado",
 };
 
 export default function StatusBadge({ status, label }: Props) {
