@@ -4,6 +4,7 @@ import Button from "./Button";
 import Logo from "./Logo";
 import UserMenu from "./UserMenu";
 import NotificationBell from "./NotificationBell";
+import WatchlistBell from "./WatchlistBell";
 import { useEffect, useState } from "react";
 import { useApi } from "../hooks/useApi";
 
@@ -110,6 +111,7 @@ export default function Navbar() {
                 </Link>
               )}
               <NotificationBell />
+              <WatchlistBell />
               <UserMenu />
             </>
           ) : (
