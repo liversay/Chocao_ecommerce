@@ -22,6 +22,7 @@ export default function AccountPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     api
@@ -39,11 +40,16 @@ export default function AccountPage() {
     if (!prefs) return;
     setSaving(true);
     setSaved(false);
+    setSaveError(null);
     try {
       const res = await api.patch("/api/users/me", { phone, notificationPrefs: prefs });
       setUser(res.data);
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
+    } catch (error) {
+      console.error("Error saving profile:", error);
+      setSaveError("Error al guardar cambios. Por favor, intenta de nuevo.");
+      setTimeout(() => setSaveError(null), 3000);
     } finally {
       setSaving(false);
     }
@@ -113,6 +119,7 @@ export default function AccountPage() {
           {saving ? "Guardando..." : "Guardar cambios"}
         </Button>
         {saved && <span style={{ color: "var(--success)", fontSize: "var(--t-sm)", fontWeight: 600 }}>Guardado ✓</span>}
+        {saveError && <span style={{ color: "var(--danger)", fontSize: "var(--t-sm)", fontWeight: 600 }}>{saveError}</span>}
       </div>
     </div>
   );
