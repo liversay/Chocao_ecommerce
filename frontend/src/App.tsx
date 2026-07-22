@@ -17,6 +17,7 @@ import CatalogPage from "./pages/CatalogPage";
 import VehicleDetailPage from "./pages/VehicleDetailPage";
 import MyBidsPage from "./pages/MyBidsPage";
 import MyPurchasesPage from "./pages/MyPurchasesPage";
+import NotificationsPage from "./pages/NotificationsPage";
 import CheckoutResultPage from "./pages/CheckoutResultPage";
 import TermsPage from "./pages/TermsPage";
 import PrivacyPage from "./pages/PrivacyPage";
@@ -75,6 +76,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <MyPurchasesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/notifications"
+            element={
+              <ProtectedRoute>
+                <NotificationsPage />
               </ProtectedRoute>
             }
           />
