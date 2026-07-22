@@ -10,6 +10,15 @@ export async function verifyClerkToken(c: Context<AppEnv>) {
   const authHeader = c.req.header("Authorization");
   if (!authHeader?.startsWith("Bearer ")) return null;
 
+  // Modo E2E (Playwright): el token "e2e:<clerkId>" se acepta como identidad
+  // sin ir a Clerk — el mismo atajo que usa el mock de los tests de bun.
+  // Jamás activo sin E2E=1 explícito en el entorno del proceso.
+  if (process.env.E2E === "1" && authHeader.startsWith("Bearer e2e:")) {
+    return { sub: authHeader.slice("Bearer e2e:".length) } as Awaited<
+      ReturnType<typeof verifyToken>
+    >;
+  }
+
   try {
     // verifyToken is the standalone function from @clerk/backend (not on clerkClient)
     return await verifyToken(authHeader.slice(7), {
