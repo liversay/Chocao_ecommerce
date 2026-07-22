@@ -11,8 +11,16 @@ interface Props<T> {
   columns: Column<T>[];
 }
 
+// Antepone un apóstrofo si el valor empieza con =, +, -, @, tab o retorno de
+// carro: sin esto, Excel/Sheets pueden interpretar la celda como una fórmula
+// al abrir el CSV (CSV formula injection) — relevante porque columnas como
+// nombre/email de usuario contienen texto que el propio usuario controla.
+function sanitizeCsvCell(str: string): string {
+  return /^[=+\-@\t\r]/.test(str) ? `'${str}` : str;
+}
+
 function toCsvValue(value: string | number): string {
-  const str = String(value);
+  const str = sanitizeCsvCell(String(value));
   return /[",\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
 }
 
