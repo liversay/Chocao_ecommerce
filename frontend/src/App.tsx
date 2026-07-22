@@ -21,6 +21,7 @@ import MyWatchlistPage from "./pages/MyWatchlistPage";
 import AccountPage from "./pages/AccountPage";
 import NotificationsPage from "./pages/NotificationsPage";
 import CheckoutResultPage from "./pages/CheckoutResultPage";
+import ReceiptPage from "./pages/ReceiptPage";
 import TermsPage from "./pages/TermsPage";
 import PrivacyPage from "./pages/PrivacyPage";
 import ContactPage from "./pages/ContactPage";
@@ -102,6 +103,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <AccountPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/receipt/:paymentId"
+            element={
+              <ProtectedRoute>
+                <ReceiptPage />
               </ProtectedRoute>
             }
           />

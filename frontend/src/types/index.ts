@@ -42,6 +42,7 @@ export interface Bid {
   amount: number;
   status: "active" | "outbid" | "winner" | "paid";
   createdAt: string;
+  payment?: { id: string; status: string };
 }
 
 export interface Payment {
