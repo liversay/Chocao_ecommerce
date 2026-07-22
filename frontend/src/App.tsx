@@ -17,6 +17,7 @@ import CatalogPage from "./pages/CatalogPage";
 import VehicleDetailPage from "./pages/VehicleDetailPage";
 import MyBidsPage from "./pages/MyBidsPage";
 import MyPurchasesPage from "./pages/MyPurchasesPage";
+import MyWatchlistPage from "./pages/MyWatchlistPage";
 import NotificationsPage from "./pages/NotificationsPage";
 import CheckoutResultPage from "./pages/CheckoutResultPage";
 import TermsPage from "./pages/TermsPage";
@@ -84,6 +85,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <NotificationsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/watchlist"
+            element={
+              <ProtectedRoute>
+                <MyWatchlistPage />
               </ProtectedRoute>
             }
           />

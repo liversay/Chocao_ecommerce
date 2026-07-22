@@ -130,6 +130,28 @@ export default function UserMenu() {
               ★ Mis compras
             </button>
             <button
+              onClick={() => { setOpen(false); navigate("/watchlist"); }}
+              style={{
+                width: "100%",
+                textAlign: "left",
+                padding: "10px 12px",
+                background: "transparent",
+                border: "none",
+                color: "var(--text)",
+                fontSize: "var(--t-sm)",
+                fontWeight: 500,
+                borderRadius: "var(--radius-sm)",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+              }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "var(--bg-alt)"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}
+            >
+              ♡ Mi watchlist
+            </button>
+            <button
               onClick={() => { setOpen(false); setShowConfirm(true); }}
               style={{
                 width: "100%",

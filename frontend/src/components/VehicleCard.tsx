@@ -1,7 +1,9 @@
 import { Link } from "react-router-dom";
+import { useAuth } from "@clerk/react";
 import Card from "./Card";
 import StatusBadge from "./StatusBadge";
 import Countdown from "./Countdown";
+import WatchlistButton from "./WatchlistButton";
 import type { Vehicle } from "../types";
 import { CONDITION_LABELS } from "../lib/labels";
 
@@ -13,6 +15,7 @@ const CAR_PLACEHOLDER = "https://images.unsplash.com/photo-1549317661-bd32c8ce0d
 
 
 export default function VehicleCard({ vehicle }: Props) {
+  const { isSignedIn } = useAuth();
   const img = vehicle.images?.[0] || CAR_PLACEHOLDER;
 
   return (
@@ -45,6 +48,11 @@ export default function VehicleCard({ vehicle }: Props) {
           <div style={{ position: "absolute", top: 12, right: 12 }}>
             <StatusBadge status={vehicle.status} />
           </div>
+          {isSignedIn && (
+            <div style={{ position: "absolute", top: 12, left: 12 }}>
+              <WatchlistButton vehicleId={vehicle._id} size="sm" />
+            </div>
+          )}
         </div>
 
         <div style={{ padding: "var(--sp-4) var(--sp-5) var(--sp-5)", flex: 1, display: "flex", flexDirection: "column" }}>
