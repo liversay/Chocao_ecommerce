@@ -6,7 +6,14 @@
  * (clave e2e_user: {clerkId, name, email}); los tests la escriben con
  * addInitScript antes de navegar y el backend (en modo E2E) acepta el
  * token "e2e:<clerkId>" que emite getToken().
+ *
+ * eslint-disable react-refresh/only-export-components: este archivo replica
+ * a propósito la superficie de un solo módulo de una librería externa
+ * (@clerk/react, que también mezcla hooks y componentes) — no es código de
+ * aplicación sujeto a Fast Refresh en uso normal, solo se carga en el modo
+ * de pruebas E2E.
  */
+/* eslint-disable react-refresh/only-export-components */
 import React from "react";
 
 interface E2EUser {
