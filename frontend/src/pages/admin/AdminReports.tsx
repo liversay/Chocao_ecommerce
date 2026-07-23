@@ -14,11 +14,6 @@ import { EMPTY_ADMIN_VEHICLE_RANGE, EMPTY_ADMIN_VEHICLE_INSTANT } from "../../ty
 import type { AdminVehicleRangeDraft, AdminVehicleInstantFilters } from "../../types/adminVehicleFilters";
 import type { Vehicle } from "../../types";
 
-interface StatusGroup {
-  _id: string;
-  count: number;
-}
-
 const TRANSMISSION_LABELS: Record<string, string> = {
   manual: "Manual",
   automatic: "Automático",
@@ -32,24 +27,21 @@ const BODY_STYLE_LABELS: Record<string, string> = {
   panel: "Panel",
 };
 
-interface Analytics {
-  vehiclesByStatus: StatusGroup[];
-  averageTicket: number;
-  adjudicationRate: number;
-  totalRefunded: number;
-  uniqueBuyers: number;
+interface ReportPayment {
+  _id: string;
+  amount: number;
+  status: "pending" | "paid" | "cancelled" | "refunded";
+  userId: { _id: string } | string | null;
+  vehicleId: { _id: string } | string | null;
 }
 
 export default function AdminReports() {
   const api = useApi();
-  const [analytics, setAnalytics] = useState<Analytics | null>(null);
-  const [loading, setLoading] = useState(true);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [vehiclesLoading, setVehiclesLoading] = useState(true);
+  const [payments, setPayments] = useState<ReportPayment[]>([]);
 
-  // Filtros de la tabla de vehículos, persistidos entre visitas. El rango de
-  // fecha (dateFrom/dateTo) también acota la analítica (ticket promedio,
-  // adjudicación, etc.), igual que antes hacía el DateRangePicker.
+  // Filtros de la tabla de vehículos, persistidos entre visitas.
   const [search, setSearch] = usePersistedState("chocao.admin.filters.reports.search", "");
   const [range, setRange] = usePersistedState<AdminVehicleRangeDraft>(
     "chocao.admin.filters.reports.range",
@@ -68,24 +60,19 @@ export default function AdminReports() {
   }
 
   useEffect(() => {
-    setLoading(true);
-    const params = new URLSearchParams();
-    if (range.dateFrom) params.set("from", range.dateFrom);
-    if (range.dateTo) params.set("to", range.dateTo);
-    api
-      .get(`/api/dashboard/analytics?${params}`)
-      .then((r) => setAnalytics(r.data))
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, [range.dateFrom, range.dateTo]);
-
-  useEffect(() => {
     setVehiclesLoading(true);
     api
       .get("/api/vehicles/admin/all")
       .then((r) => setVehicles(r.data))
       .catch(console.error)
       .finally(() => setVehiclesLoading(false));
+    // Pagos del inventario completo (tope de 100, el máximo del endpoint) —
+    // se cruzan con los vehículos filtrados para que el KPI-row reaccione a
+    // TODOS los filtros (no solo la fecha), igual que la tabla de abajo.
+    api
+      .get("/api/payments?limit=100")
+      .then((r) => setPayments(r.data.items))
+      .catch(console.error);
   }, []);
 
   const filteredVehicles = useMemo(
@@ -93,8 +80,29 @@ export default function AdminReports() {
     [vehicles, search, range, instant]
   );
 
-  const vehiclesByStatus = analytics?.vehiclesByStatus ?? [];
-  const total = vehiclesByStatus.reduce((s, g) => s + g.count, 0);
+  // KPIs derivados enteramente del inventario ya filtrado: cambian con
+  // cualquier filtro aplicado (búsqueda, estado, precio, año, km, marca,
+  // transmisión, carrocería, fecha de registro), no solo con la fecha.
+  const kpis = useMemo(() => {
+    const filteredIds = new Set(filteredVehicles.map((v) => v._id));
+    const relevantPayments = payments.filter((p) => {
+      const vehicleId = typeof p.vehicleId === "string" ? p.vehicleId : p.vehicleId?._id;
+      return vehicleId ? filteredIds.has(vehicleId) : false;
+    });
+    const paid = relevantPayments.filter((p) => p.status === "paid");
+    const refunded = relevantPayments.filter((p) => p.status === "refunded");
+    const awarded = filteredVehicles.filter((v) => v.status === "awarded");
+
+    return {
+      inventoryCount: filteredVehicles.length,
+      averageTicket: paid.length > 0 ? paid.reduce((s, p) => s + p.amount, 0) / paid.length : 0,
+      adjudicationRate: filteredVehicles.length > 0 ? awarded.length / filteredVehicles.length : 0,
+      uniqueBuyers: new Set(
+        paid.map((p) => (typeof p.userId === "string" ? p.userId : p.userId?._id)).filter(Boolean)
+      ).size,
+      totalRefunded: refunded.reduce((s, p) => s + p.amount, 0),
+    };
+  }, [filteredVehicles, payments]);
 
   return (
     <div className="fade-in">
@@ -113,16 +121,16 @@ export default function AdminReports() {
         onInstantChange={updateInstant}
       />
 
-      {loading && !analytics ? (
+      {vehiclesLoading ? (
         <LoadingState />
       ) : (
         <>
           <div className="kpi-row" style={{ marginBottom: "var(--sp-5)" }}>
-            <AdminStatCard label="Inventario en el rango" value={total} />
-            <AdminStatCard label="Ticket promedio" value={`$${Math.round(analytics?.averageTicket ?? 0).toLocaleString()}`} />
-            <AdminStatCard label="Tasa de adjudicación" value={`${Math.round((analytics?.adjudicationRate ?? 0) * 100)}%`} />
-            <AdminStatCard label="Compradores únicos" value={analytics?.uniqueBuyers ?? 0} />
-            <AdminStatCard label="Reembolsado" value={`$${(analytics?.totalRefunded ?? 0).toLocaleString()}`} />
+            <AdminStatCard label="Inventario filtrado" value={kpis.inventoryCount} />
+            <AdminStatCard label="Ticket promedio" value={`$${Math.round(kpis.averageTicket).toLocaleString()}`} />
+            <AdminStatCard label="Tasa de adjudicación" value={`${Math.round(kpis.adjudicationRate * 100)}%`} />
+            <AdminStatCard label="Compradores únicos" value={kpis.uniqueBuyers} />
+            <AdminStatCard label="Reembolsado" value={`$${kpis.totalRefunded.toLocaleString()}`} />
           </div>
 
           <Card padding="lg">
