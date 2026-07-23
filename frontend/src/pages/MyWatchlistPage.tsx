@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { Heart } from "lucide-react";
 import { useApi } from "../hooks/useApi";
 import VehicleCard from "../components/VehicleCard";
 import PageHeader from "../components/PageHeader";
@@ -33,7 +34,7 @@ export default function MyWatchlistPage() {
         <LoadingState />
       ) : items.length === 0 ? (
         <EmptyState
-          icon="♡"
+          icon={<Heart size={32} strokeWidth={1.5} color="var(--text-muted)" />}
           title="Aún no sigues ningún vehículo"
           description="Guarda un vehículo desde el catálogo para hacerle seguimiento aquí."
           action={

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type { MouseEvent } from "react";
+import { Heart } from "lucide-react";
 import { useApi } from "../hooks/useApi";
 
 interface Props {
@@ -64,11 +65,10 @@ export default function WatchlistButton({ vehicleId, size = "md" }: Props) {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        fontSize: size === "sm" ? "0.9rem" : "1.05rem",
         flexShrink: 0,
       }}
     >
-      {saved ? "♥" : "♡"}
+      <Heart size={size === "sm" ? 16 : 18} fill={saved ? "currentColor" : "none"} />
     </button>
   );
 }
