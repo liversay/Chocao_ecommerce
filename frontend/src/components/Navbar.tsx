@@ -103,15 +103,9 @@ export default function Navbar() {
           </div>
         </Link>
 
-        {/* Center nav (desktop) */}
-        <div
-          className="navbar-center-desktop"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "var(--sp-5)",
-          }}
-        >
+        {/* Center nav (desktop) — layout en .navbar-center-desktop (index.css),
+            no inline: así el media query puede ocultarlo en móvil. */}
+        <div className="navbar-center-desktop">
           {NAV_LINKS.filter((link) => !link.protected || isSignedIn).map((link) => (
             <NavLink
               key={link.to}

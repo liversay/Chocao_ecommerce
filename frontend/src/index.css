@@ -358,7 +358,10 @@ h1, h2, h3, h4 {
 /* Nav central de desktop / botón hamburguesa: visibilidad se invierte
    por debajo del breakpoint móvil (ver media query). El wrapper del botón
    también debe ocultarse (no solo el botón) para no sumar un gap de flex
-   extra en la fila de "Right actions" en desktop. */
+   extra en la fila de "Right actions" en desktop. El layout de
+   .navbar-center-desktop vive aquí (no inline) para que la regla
+   "display: none" del media query pueda ganarle en la cascada. */
+.navbar-center-desktop { display: flex; align-items: center; gap: var(--sp-5); }
 .navbar-hamburger-wrap { display: none; }
 .navbar-hamburger-btn { display: none; }
 .navbar-mobile-drawer { display: none; }
