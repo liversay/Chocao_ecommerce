@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { Gavel } from "lucide-react";
 import { useApi } from "../hooks/useApi";
 import Card from "../components/Card";
 import Button from "../components/Button";
@@ -73,7 +74,7 @@ export default function MyBidsPage() {
           <LoadingState />
         ) : bids.length === 0 ? (
           <EmptyState
-            icon="🏷️"
+            icon={<Gavel size={32} strokeWidth={1.5} color="var(--text-muted)" />}
             title="Aún no has participado en subastas"
             description="Explora el catálogo y realiza tu primera puja en un vehículo activo."
             action={

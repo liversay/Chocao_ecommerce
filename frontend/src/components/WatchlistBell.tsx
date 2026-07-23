@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Heart } from "lucide-react";
 import { useApi } from "../hooks/useApi";
 import { useRealtime } from "../context/RealtimeContext";
 
@@ -54,10 +55,9 @@ export default function WatchlistBell() {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        fontSize: "1.1rem",
       }}
     >
-      ♥
+      <Heart size={20} fill="currentColor" />
       {count > 0 && (
         <span
           style={{

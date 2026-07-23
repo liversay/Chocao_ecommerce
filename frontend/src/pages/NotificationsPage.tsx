@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Bell } from "lucide-react";
 import { useApi } from "../hooks/useApi";
 import Card from "../components/Card";
 import Button from "../components/Button";
@@ -68,7 +69,11 @@ export default function NotificationsPage() {
         {loading ? (
           <LoadingState />
         ) : items.length === 0 ? (
-          <EmptyState icon="🔔" title="Sin notificaciones" description="Aquí verás avisos de tus subastas y compras." />
+          <EmptyState
+            icon={<Bell size={32} strokeWidth={1.5} color="var(--text-muted)" />}
+            title="Sin notificaciones"
+            description="Aquí verás avisos de tus subastas y compras."
+          />
         ) : (
           <div>
             {items.map((n) => (
