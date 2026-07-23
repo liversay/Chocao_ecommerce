@@ -4,14 +4,37 @@ import Card from "../../components/Card";
 import PageHeader from "../../components/PageHeader";
 import LoadingState from "../../components/LoadingState";
 import AdminStatCard from "../../components/AdminStatCard";
+import DataTable from "../../components/DataTable";
 import DateRangePicker from "../../components/admin/DateRangePicker";
 import StatusDonutChart from "../../components/admin/charts/StatusDonutChart";
 import ExportCsvButton from "../../components/admin/ExportCsvButton";
+import type { Vehicle } from "../../types";
 
 interface StatusGroup {
   _id: string;
   count: number;
 }
+
+const STATUS_LABELS: Record<string, string> = {
+  draft: "Borrador",
+  published: "Publicado",
+  active: "Activo",
+  closed: "Cerrado",
+  awarded: "Adjudicado",
+};
+
+const TRANSMISSION_LABELS: Record<string, string> = {
+  manual: "Manual",
+  automatic: "Automático",
+};
+
+const BODY_STYLE_LABELS: Record<string, string> = {
+  sedan: "Sedán",
+  suv: "SUV",
+  pickup: "Pickup",
+  van: "Bus / Coaster / Van",
+  panel: "Panel",
+};
 
 interface Analytics {
   vehiclesByStatus: StatusGroup[];
@@ -32,6 +55,8 @@ export default function AdminReports() {
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [loading, setLoading] = useState(true);
   const [range, setRange] = useState({ from: isoDaysAgo(30), to: isoDaysAgo(0) });
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [vehiclesLoading, setVehiclesLoading] = useState(true);
 
   useEffect(() => {
     setLoading(true);
@@ -42,6 +67,15 @@ export default function AdminReports() {
       .catch(console.error)
       .finally(() => setLoading(false));
   }, [range.from, range.to]);
+
+  useEffect(() => {
+    setVehiclesLoading(true);
+    api
+      .get("/api/vehicles/admin/all")
+      .then((r) => setVehicles(r.data))
+      .catch(console.error)
+      .finally(() => setVehiclesLoading(false));
+  }, []);
 
   const vehiclesByStatus = analytics?.vehiclesByStatus ?? [];
   const total = vehiclesByStatus.reduce((s, g) => s + g.count, 0);
@@ -91,6 +125,93 @@ export default function AdminReports() {
               </p>
             ) : (
               <StatusDonutChart data={vehiclesByStatus} />
+            )}
+          </Card>
+
+          <Card padding="lg" style={{ marginTop: "var(--sp-5)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "var(--sp-5)" }}>
+              <div>
+                <h2 style={{ fontSize: "var(--t-md)", color: "var(--text)" }}>Todos los vehículos</h2>
+                <p style={{ fontSize: "var(--t-sm)", color: "var(--text-muted)", marginTop: 4 }}>
+                  Inventario completo ({vehicles.length} vehículos)
+                </p>
+              </div>
+              <ExportCsvButton
+                data={vehicles}
+                filename="todos-los-vehiculos"
+                columns={[
+                  { header: "Título", accessor: (v) => v.title },
+                  { header: "Marca", accessor: (v) => v.brand },
+                  { header: "Modelo", accessor: (v) => v.model },
+                  { header: "Año", accessor: (v) => v.year },
+                  { header: "Transmisión", accessor: (v) => (v.transmission ? TRANSMISSION_LABELS[v.transmission] ?? v.transmission : "") },
+                  { header: "Carrocería", accessor: (v) => (v.bodyStyle ? BODY_STYLE_LABELS[v.bodyStyle] ?? v.bodyStyle : "") },
+                  { header: "Estado", accessor: (v) => STATUS_LABELS[v.status] ?? v.status },
+                  { header: "Precio", accessor: (v) => v.currentPrice },
+                  { header: "Kilometraje", accessor: (v) => v.mileage },
+                  {
+                    header: "Fecha de registro",
+                    accessor: (v) => new Date(v.createdAt).toLocaleDateString("es-PA", { day: "numeric", month: "short", year: "numeric" }),
+                  },
+                ]}
+              />
+            </div>
+
+            {vehiclesLoading ? (
+              <LoadingState />
+            ) : (
+              <DataTable
+                dense
+                columns={[
+                  {
+                    header: "Vehículo",
+                    accessor: (v) => (
+                      <div>
+                        <p style={{ fontWeight: 600, color: "var(--text)" }}>{v.title}</p>
+                        <p style={{ fontSize: "var(--t-xs)", color: "var(--text-soft)" }}>
+                          {v.brand} · {v.model}
+                        </p>
+                      </div>
+                    ),
+                  },
+                  { header: "Año", accessor: (v) => v.year },
+                  {
+                    header: "Transmisión",
+                    accessor: (v) => (v.transmission ? TRANSMISSION_LABELS[v.transmission] ?? v.transmission : "—"),
+                  },
+                  {
+                    header: "Carrocería",
+                    accessor: (v) => (v.bodyStyle ? BODY_STYLE_LABELS[v.bodyStyle] ?? v.bodyStyle : "—"),
+                  },
+                  { header: "Estado", accessor: (v) => STATUS_LABELS[v.status] ?? v.status },
+                  {
+                    header: "Precio",
+                    align: "right",
+                    accessor: (v) => (
+                      <span className="mono" style={{ fontWeight: 600 }}>
+                        ${v.currentPrice.toLocaleString()}
+                      </span>
+                    ),
+                  },
+                  {
+                    header: "Kilometraje",
+                    align: "right",
+                    accessor: (v) => <span className="mono">{v.mileage.toLocaleString()}</span>,
+                  },
+                  {
+                    header: "Fecha de registro",
+                    sortKey: "createdAt",
+                    sortValue: (v) => new Date(v.createdAt).getTime(),
+                    accessor: (v) => (
+                      <span style={{ color: "var(--text-muted)", fontSize: "var(--t-xs)" }}>
+                        {new Date(v.createdAt).toLocaleDateString("es-PA", { day: "numeric", month: "short", year: "numeric" })}
+                      </span>
+                    ),
+                  },
+                ]}
+                data={vehicles}
+                emptyMessage="No hay vehículos registrados"
+              />
             )}
           </Card>
         </>
