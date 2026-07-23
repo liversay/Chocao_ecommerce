@@ -5,10 +5,21 @@ import { recordAudit } from "./audit";
 import { publishPublic } from "./realtime";
 
 export interface ListVehiclesParams {
-  status?: "all" | "draft" | "published" | "active" | "closed" | "awarded";
+  /** Comma-separated en HTTP; también acepta un único valor (compat MCP). */
+  status?: string;
+  /** Comma-separated: cada marca matchea por substring case-insensitive, combinadas con OR. */
   brand?: string;
   minPrice?: number;
   maxPrice?: number;
+  minYear?: number;
+  maxYear?: number;
+  minMileage?: number;
+  maxMileage?: number;
+  /** Comma-separated: "manual"|"automatic" */
+  transmission?: string;
+  /** Comma-separated: "sedan"|"suv"|"pickup"|"van"|"panel" */
+  bodyStyle?: string;
+  sort?: string;
   q?: string;
   page?: number;
   limit?: number;
@@ -40,21 +51,40 @@ function escapeRegex(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+function splitCsv(value: string): string[] {
+  return value
+    .split(",")
+    .map((v) => v.trim())
+    .filter(Boolean);
+}
+
 export async function listVehicles(params: ListVehiclesParams = {}): Promise<ListVehiclesResult> {
   const page = params.page ?? 1;
   const limit = params.limit ?? 12;
 
   const filter: Record<string, unknown> = {};
-  if (params.status === "draft") {
-    // Los borradores jamás se exponen al público
-    filter.status = params.includeDrafts ? "draft" : { $in: [...PUBLIC_STATUSES] };
-  } else if (!params.status || params.status === "all") {
-    filter.status = { $in: [...PUBLIC_STATUSES] };
-  } else {
-    filter.status = params.status;
-  }
 
-  if (params.brand) filter.brand = new RegExp(escapeRegex(params.brand), "i");
+  // Resolución de estado: sin status (o incluye "all") => todos los
+  // públicos; si no, exactamente lo pedido, pero sin admitir "draft" salvo
+  // includeDrafts — y si al quitarlo la lista queda vacía (p.ej. alguien
+  // pidió solo status=draft sin ser admin), caemos de vuelta a los públicos
+  // en vez de devolver una lista vacía o un filtro imposible.
+  const requestedStatuses = params.status ? splitCsv(params.status) : [];
+  let statuses: string[] =
+    requestedStatuses.length === 0 || requestedStatuses.includes("all")
+      ? [...PUBLIC_STATUSES]
+      : requestedStatuses;
+  if (!params.includeDrafts) {
+    const withoutDrafts = statuses.filter((s) => s !== "draft");
+    statuses = withoutDrafts.length > 0 ? withoutDrafts : [...PUBLIC_STATUSES];
+  }
+  filter.status = { $in: statuses };
+
+  // Marca: lista separada por comas, cada una substring case-insensitive,
+  // combinadas con OR.
+  const brandConditions = params.brand
+    ? splitCsv(params.brand).map((b) => ({ brand: new RegExp(escapeRegex(b), "i") }))
+    : [];
 
   if (params.minPrice !== undefined || params.maxPrice !== undefined) {
     filter.currentPrice = {
@@ -63,10 +93,53 @@ export async function listVehicles(params: ListVehiclesParams = {}): Promise<Lis
     };
   }
 
-  if (params.q) {
-    const rx = new RegExp(escapeRegex(params.q), "i");
-    filter.$or = [{ title: rx }, { brand: rx }, { model: rx }];
+  if (params.minYear !== undefined || params.maxYear !== undefined) {
+    filter.year = {
+      ...(params.minYear !== undefined ? { $gte: params.minYear } : {}),
+      ...(params.maxYear !== undefined ? { $lte: params.maxYear } : {}),
+    };
   }
+
+  if (params.minMileage !== undefined || params.maxMileage !== undefined) {
+    filter.mileage = {
+      ...(params.minMileage !== undefined ? { $gte: params.minMileage } : {}),
+      ...(params.maxMileage !== undefined ? { $lte: params.maxMileage } : {}),
+    };
+  }
+
+  if (params.transmission) {
+    const list = splitCsv(params.transmission);
+    if (list.length > 0) filter.transmission = { $in: list };
+  }
+
+  if (params.bodyStyle) {
+    const list = splitCsv(params.bodyStyle);
+    if (list.length > 0) filter.bodyStyle = { $in: list };
+  }
+
+  // q y brand arman cada uno su propio $or — no se pueden asignar ambos a
+  // filter.$or (el segundo pisaría al primero), así que si ambos están
+  // presentes se combinan con $and en vez de sobreescribirse.
+  const searchConditions = params.q
+    ? [{ title: new RegExp(escapeRegex(params.q), "i") }, { brand: new RegExp(escapeRegex(params.q), "i") }, { model: new RegExp(escapeRegex(params.q), "i") }]
+    : [];
+
+  if (brandConditions.length > 0 && searchConditions.length > 0) {
+    filter.$and = [{ $or: brandConditions }, { $or: searchConditions }];
+  } else if (brandConditions.length > 0) {
+    filter.$or = brandConditions;
+  } else if (searchConditions.length > 0) {
+    filter.$or = searchConditions;
+  }
+
+  const sort: Record<string, 1 | -1> =
+    params.sort === "price_desc"
+      ? { currentPrice: -1 }
+      : params.sort === "price_asc"
+        ? { currentPrice: 1 }
+        : params.sort === "oldest"
+          ? { createdAt: 1 }
+          : { createdAt: -1 };
 
   const key = JSON.stringify({ v: cacheVersion, ...params, page, limit });
   const cached = cache.get(key);
@@ -74,7 +147,7 @@ export async function listVehicles(params: ListVehiclesParams = {}): Promise<Lis
 
   const [items, total] = await Promise.all([
     Vehicle.find(filter)
-      .sort({ createdAt: -1 })
+      .sort(sort)
       .skip((page - 1) * limit)
       .limit(limit),
     Vehicle.countDocuments(filter),

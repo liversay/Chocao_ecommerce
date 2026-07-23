@@ -10,6 +10,7 @@ import PageHeader from "../../components/PageHeader";
 import LoadingState from "../../components/LoadingState";
 import EmptyState from "../../components/EmptyState";
 import ImageDropzone from "../../components/ImageDropzone";
+import { BRANDS } from "../../constants/brands";
 import type { Vehicle } from "../../types";
 
 const STATUSES = [
@@ -46,15 +47,6 @@ const CONDITION_HELP: Record<string, string> = {
   fair: "Uso notable: requiere mantenimiento próximamente",
   poor: "Daños importantes: requiere reparación",
 };
-
-const BRANDS = [
-  "Acura", "Alfa Romeo", "Audi", "BMW", "BYD", "Changan", "Chery", "Chevrolet",
-  "Chrysler", "Citroën", "Dodge", "Fiat", "Ford", "Geely", "GMC", "Great Wall",
-  "Honda", "Hyundai", "Infiniti", "Isuzu", "JAC", "Jaguar", "Jeep", "Kia",
-  "Land Rover", "Lexus", "Mazda", "Mercedes-Benz", "MG", "Mini", "Mitsubishi",
-  "Nissan", "Peugeot", "Porsche", "RAM", "Renault", "Seat", "Škoda", "SsangYong",
-  "Subaru", "Suzuki", "Tesla", "Toyota", "Volkswagen", "Volvo", "Otra",
-];
 
 const COLORS = [
   "Amarillo", "Azul", "Beige", "Blanco", "Dorado", "Gris", "Marrón", "Naranja",

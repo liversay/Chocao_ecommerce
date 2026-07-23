@@ -38,11 +38,32 @@ export const updateVehicleSchema = createVehicleSchema.partial();
 
 export const patchVehicleStatusSchema = z.object({ status: vehicleStatusSchema });
 
+const STATUS_TOKENS = ["all", "draft", "published", "active", "closed", "awarded"];
+
 export const listVehiclesQuerySchema = z.object({
-  status: z.enum(["all", "draft", "published", "active", "closed", "awarded"], "Estado inválido").optional(),
-  brand: z.string().trim().max(60).optional(),
+  // Lista separada por comas (p.ej. "active,closed"); "all" es un token
+  // válido que significa "todos los estados públicos" (ver services/vehicles).
+  // La validación de cada token individual vive acá; la resolución de
+  // "qué estados finalmente aplican" vive en el servicio.
+  status: z
+    .string()
+    .trim()
+    .max(200)
+    .optional()
+    .refine(
+      (value) => !value || value.split(",").every((token) => STATUS_TOKENS.includes(token.trim())),
+      "Estado inválido"
+    ),
+  brand: z.string().trim().max(300).optional(),
   minPrice: z.coerce.number("El precio mínimo debe ser numérico").nonnegative().optional(),
   maxPrice: z.coerce.number("El precio máximo debe ser numérico").nonnegative().optional(),
+  minYear: z.coerce.number("El año mínimo debe ser numérico").int().optional(),
+  maxYear: z.coerce.number("El año máximo debe ser numérico").int().optional(),
+  minMileage: z.coerce.number("El kilometraje mínimo debe ser numérico").nonnegative().optional(),
+  maxMileage: z.coerce.number("El kilometraje máximo debe ser numérico").nonnegative().optional(),
+  transmission: z.string().trim().max(60).optional(),
+  bodyStyle: z.string().trim().max(120).optional(),
+  sort: z.enum(["price_desc", "price_asc", "newest", "oldest"], "Orden inválido").optional(),
   q: z.string().trim().max(100).optional(),
   page: z.coerce.number("La página debe ser numérica").int().min(1).default(1),
   limit: z.coerce.number("El límite debe ser numérico").int().min(1).max(50).default(12),
