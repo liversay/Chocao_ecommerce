@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useApi } from "../../hooks/useApi";
 import { useRealtimeRefetch } from "../../hooks/useRealtimeRefetch";
+import { usePersistedState } from "../../hooks/usePersistedState";
 import Card from "../../components/Card";
 import Button from "../../components/Button";
 import DataTable from "../../components/DataTable";
@@ -12,6 +13,7 @@ import AdminStatCard from "../../components/AdminStatCard";
 import DateRangePicker from "../../components/admin/DateRangePicker";
 import RevenueAreaChart from "../../components/admin/charts/RevenueAreaChart";
 import BidsBarChart from "../../components/admin/charts/BidsBarChart";
+import { VEHICLE_STATUS_LABELS } from "../../constants/vehicleStatus";
 import type { DashboardSummary } from "../../types";
 
 interface RecentVehicle {
@@ -24,9 +26,16 @@ interface RecentVehicle {
   createdAt: string;
 }
 
+interface VehiclesByStatus {
+  _id: string;
+  count: number;
+  amount: number;
+}
+
 interface TopBid {
   _id: string;
   amount: number;
+  status: string;
   vehicleId: { title: string; brand: string } | null;
   userId: { name: string; email: string } | null;
   createdAt: string;
@@ -50,9 +59,15 @@ export default function AdminDashboard() {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [recentVehicles, setRecentVehicles] = useState<RecentVehicle[]>([]);
+  const [vehiclesByStatus, setVehiclesByStatus] = useState<VehiclesByStatus[]>([]);
   const [topBids, setTopBids] = useState<TopBid[]>([]);
   const [loading, setLoading] = useState(true);
-  const [range, setRange] = useState({ from: isoDaysAgo(30), to: isoDaysAgo(0) });
+  // El rango persiste entre visitas (localStorage), como el resto de filtros
+  // del backoffice.
+  const [range, setRange] = usePersistedState("chocao.admin.filters.dashboard", {
+    from: isoDaysAgo(30),
+    to: isoDaysAgo(0),
+  });
 
   function load() {
     setLoading(true);
@@ -65,6 +80,7 @@ export default function AdminDashboard() {
       .then(([sumRes, repRes, anaRes]) => {
         setSummary(sumRes.data);
         setRecentVehicles(repRes.data.recentVehicles);
+        setVehiclesByStatus(repRes.data.vehiclesByStatus);
         setTopBids(repRes.data.topBids);
         setAnalytics(anaRes.data);
       })
@@ -118,26 +134,19 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      <div className="grid-2" style={{ gap: "var(--sp-4)" }}>
+      <div className="grid-2" style={{ gap: "var(--sp-4)", marginBottom: "var(--sp-6)" }}>
         <Card>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--sp-4)" }}>
-            <h2 style={{ fontSize: "var(--t-md)", color: "var(--text)" }}>Vehículos recientes</h2>
-            <Link to="/admin/vehicles">
-              <Button variant="ghost" size="sm">Ver todos →</Button>
-            </Link>
-          </div>
+          <h2 style={{ fontSize: "var(--t-md)", color: "var(--text)", marginBottom: "var(--sp-4)" }}>Vehículos por estado</h2>
           <DataTable
             dense
             columns={[
-              { header: "Título", accessor: (v) => (
-                <span style={{ fontWeight: 600, color: "var(--text)" }}>{v.title}</span>
-              ) },
-              { header: "Estado", accessor: (v) => <StatusBadge status={v.status} /> },
-              { header: "Precio", align: "right", accessor: (v) => (
-                <span className="mono">${v.currentPrice.toLocaleString()}</span>
+              { header: "Estado", accessor: (g) => <StatusBadge status={g._id} label={VEHICLE_STATUS_LABELS[g._id]} /> },
+              { header: "Cantidad", align: "right", accessor: (g) => <span className="mono">{g.count}</span> },
+              { header: "Monto", align: "right", accessor: (g) => (
+                <span className="mono" style={{ fontWeight: 600 }}>${g.amount.toLocaleString()}</span>
               ) },
             ]}
-            data={recentVehicles}
+            data={vehiclesByStatus}
             emptyMessage="Sin vehículos"
           />
         </Card>
@@ -155,6 +164,7 @@ export default function AdminDashboard() {
               { header: "Monto", accessor: (b) => (
                 <span className="mono">${b.amount.toLocaleString()}</span>
               ) },
+              { header: "Estado", accessor: (b) => <StatusBadge status={b.status} /> },
               { header: "Vehículo", accessor: (b) => b.vehicleId?.title || "—" },
               { header: "Usuario", accessor: (b) => (
                 <span style={{ color: "var(--text-muted)", fontSize: "var(--t-xs)" }}>
@@ -163,10 +173,33 @@ export default function AdminDashboard() {
               ) },
             ]}
             data={topBids}
-            emptyMessage="Sin pujas"
+            emptyMessage="Sin pujas ganadoras o activas"
           />
         </Card>
       </div>
+
+      <Card>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--sp-4)" }}>
+          <h2 style={{ fontSize: "var(--t-md)", color: "var(--text)" }}>Vehículos recientes</h2>
+          <Link to="/admin/vehicles">
+            <Button variant="ghost" size="sm">Ver todos →</Button>
+          </Link>
+        </div>
+        <DataTable
+          dense
+          columns={[
+            { header: "Título", accessor: (v) => (
+              <span style={{ fontWeight: 600, color: "var(--text)" }}>{v.title}</span>
+            ) },
+            { header: "Estado", accessor: (v) => <StatusBadge status={v.status} /> },
+            { header: "Precio", align: "right", accessor: (v) => (
+              <span className="mono">${v.currentPrice.toLocaleString()}</span>
+            ) },
+          ]}
+          data={recentVehicles}
+          emptyMessage="Sin vehículos"
+        />
+      </Card>
     </div>
   );
 }

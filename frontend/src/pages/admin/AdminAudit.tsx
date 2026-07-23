@@ -1,12 +1,15 @@
 // frontend/src/pages/admin/AdminAudit.tsx
 import { useEffect, useState } from "react";
 import { useApi } from "../../hooks/useApi";
+import { usePersistedState } from "../../hooks/usePersistedState";
 import Card from "../../components/Card";
+import Input from "../../components/Input";
 import Select from "../../components/Select";
 import DataTable from "../../components/DataTable";
 import PageHeader from "../../components/PageHeader";
 import LoadingState from "../../components/LoadingState";
 import ExportCsvButton from "../../components/admin/ExportCsvButton";
+import FilterPanel from "../../components/admin/FilterPanel";
 
 interface AuditEntry {
   _id: string;
@@ -43,13 +46,17 @@ export default function AdminAudit() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [pages, setPages] = useState(1);
-  const [resource, setResource] = useState("");
+  const [resource, setResource] = usePersistedState("chocao.admin.filters.audit.resource", "");
+  const [dateFrom, setDateFrom] = usePersistedState("chocao.admin.filters.audit.dateFrom", "");
+  const [dateTo, setDateTo] = usePersistedState("chocao.admin.filters.audit.dateTo", "");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setLoading(true);
     const params = new URLSearchParams({ page: String(page), limit: "30" });
     if (resource) params.set("resource", resource);
+    if (dateFrom) params.set("from", dateFrom);
+    if (dateTo) params.set("to", dateTo);
     api
       .get(`/api/audit?${params}`)
       .then((r) => {
@@ -59,7 +66,7 @@ export default function AdminAudit() {
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [resource, page]);
+  }, [resource, dateFrom, dateTo, page]);
 
   return (
     <div className="fade-in">
@@ -82,9 +89,15 @@ export default function AdminAudit() {
         }
       />
 
-      <Card padding="md" style={{ marginBottom: "var(--sp-4)", width: 260 }}>
-        <Select options={RESOURCE_OPTIONS} value={resource} onChange={(e) => { setPage(1); setResource(e.target.value); }} />
-      </Card>
+      <FilterPanel activeCount={(resource ? 1 : 0) + (dateFrom || dateTo ? 1 : 0)}>
+        <div className="grid-2" style={{ gap: "var(--sp-3)" }}>
+          <Select label="Recurso" options={RESOURCE_OPTIONS} value={resource} onChange={(e) => { setPage(1); setResource(e.target.value); }} />
+        </div>
+        <div className="grid-2" style={{ gap: "var(--sp-3)" }}>
+          <Input label="Desde" type="date" value={dateFrom} onChange={(e) => { setPage(1); setDateFrom(e.target.value); }} />
+          <Input label="Hasta" type="date" value={dateTo} onChange={(e) => { setPage(1); setDateTo(e.target.value); }} />
+        </div>
+      </FilterPanel>
 
       <Card padding="none">
         {loading && items.length === 0 ? (

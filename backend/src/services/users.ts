@@ -4,6 +4,9 @@ import { User } from "../models/User";
 export interface ListUsersParams {
   q?: string;
   role?: "customer" | "admin";
+  banned?: boolean;
+  from?: Date;
+  to?: Date;
   page?: number;
   limit?: number;
 }
@@ -14,9 +17,13 @@ function escapeRegex(text: string): string {
 
 // Listado de usuarios para el backoffice, con el conteo de pujas de cada uno
 // (para reconocer a los más activos de un vistazo).
-export async function listUsers({ q, role, page = 1, limit = 20 }: ListUsersParams) {
+export async function listUsers({ q, role, banned, from, to, page = 1, limit = 20 }: ListUsersParams) {
   const filter: Record<string, unknown> = {};
   if (role) filter.role = role;
+  if (banned !== undefined) filter.banned = banned;
+  if (from || to) {
+    filter.createdAt = { ...(from ? { $gte: from } : {}), ...(to ? { $lte: to } : {}) };
+  }
   if (q) {
     const rx = new RegExp(escapeRegex(q), "i");
     filter.$or = [{ name: rx }, { email: rx }];

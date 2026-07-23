@@ -1,27 +1,23 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useApi } from "../../hooks/useApi";
+import { usePersistedState } from "../../hooks/usePersistedState";
 import Card from "../../components/Card";
 import PageHeader from "../../components/PageHeader";
 import LoadingState from "../../components/LoadingState";
 import AdminStatCard from "../../components/AdminStatCard";
 import DataTable from "../../components/DataTable";
-import DateRangePicker from "../../components/admin/DateRangePicker";
-import StatusDonutChart from "../../components/admin/charts/StatusDonutChart";
 import ExportCsvButton from "../../components/admin/ExportCsvButton";
+import AdminVehicleFilters from "../../components/admin/AdminVehicleFilters";
+import { VEHICLE_STATUS_LABELS } from "../../constants/vehicleStatus";
+import { filterAdminVehicles } from "../../utils/filterAdminVehicles";
+import { EMPTY_ADMIN_VEHICLE_RANGE, EMPTY_ADMIN_VEHICLE_INSTANT } from "../../types/adminVehicleFilters";
+import type { AdminVehicleRangeDraft, AdminVehicleInstantFilters } from "../../types/adminVehicleFilters";
 import type { Vehicle } from "../../types";
 
 interface StatusGroup {
   _id: string;
   count: number;
 }
-
-const STATUS_LABELS: Record<string, string> = {
-  draft: "Borrador",
-  published: "Publicado",
-  active: "Activo",
-  closed: "Cerrado",
-  awarded: "Adjudicado",
-};
 
 const TRANSMISSION_LABELS: Record<string, string> = {
   manual: "Manual",
@@ -44,29 +40,44 @@ interface Analytics {
   uniqueBuyers: number;
 }
 
-function isoDaysAgo(days: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() - days);
-  return d.toISOString().slice(0, 10);
-}
-
 export default function AdminReports() {
   const api = useApi();
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [loading, setLoading] = useState(true);
-  const [range, setRange] = useState({ from: isoDaysAgo(30), to: isoDaysAgo(0) });
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [vehiclesLoading, setVehiclesLoading] = useState(true);
 
+  // Filtros de la tabla de vehículos, persistidos entre visitas. El rango de
+  // fecha (dateFrom/dateTo) también acota la analítica (ticket promedio,
+  // adjudicación, etc.), igual que antes hacía el DateRangePicker.
+  const [search, setSearch] = usePersistedState("chocao.admin.filters.reports.search", "");
+  const [range, setRange] = usePersistedState<AdminVehicleRangeDraft>(
+    "chocao.admin.filters.reports.range",
+    EMPTY_ADMIN_VEHICLE_RANGE
+  );
+  const [instant, setInstant] = usePersistedState<AdminVehicleInstantFilters>(
+    "chocao.admin.filters.reports.instant",
+    EMPTY_ADMIN_VEHICLE_INSTANT
+  );
+
+  function updateRange(patch: Partial<AdminVehicleRangeDraft>) {
+    setRange((prev) => ({ ...prev, ...patch }));
+  }
+  function updateInstant(patch: Partial<AdminVehicleInstantFilters>) {
+    setInstant((prev) => ({ ...prev, ...patch }));
+  }
+
   useEffect(() => {
     setLoading(true);
-    const params = new URLSearchParams({ from: range.from, to: range.to });
+    const params = new URLSearchParams();
+    if (range.dateFrom) params.set("from", range.dateFrom);
+    if (range.dateTo) params.set("to", range.dateTo);
     api
       .get(`/api/dashboard/analytics?${params}`)
       .then((r) => setAnalytics(r.data))
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [range.from, range.to]);
+  }, [range.dateFrom, range.dateTo]);
 
   useEffect(() => {
     setVehiclesLoading(true);
@@ -77,6 +88,11 @@ export default function AdminReports() {
       .finally(() => setVehiclesLoading(false));
   }, []);
 
+  const filteredVehicles = useMemo(
+    () => filterAdminVehicles(vehicles, search, range, instant),
+    [vehicles, search, range, instant]
+  );
+
   const vehiclesByStatus = analytics?.vehiclesByStatus ?? [];
   const total = vehiclesByStatus.reduce((s, g) => s + g.count, 0);
 
@@ -86,7 +102,15 @@ export default function AdminReports() {
         eyebrow="Análisis"
         title="Reportes"
         subtitle="Distribución del inventario y métricas de negocio"
-        actions={<DateRangePicker from={range.from} to={range.to} onChange={setRange} />}
+      />
+
+      <AdminVehicleFilters
+        search={search}
+        onSearchChange={setSearch}
+        range={range}
+        onRangeChange={updateRange}
+        instant={instant}
+        onInstantChange={updateInstant}
       />
 
       {loading && !analytics ? (
@@ -104,40 +128,13 @@ export default function AdminReports() {
           <Card padding="lg">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "var(--sp-5)" }}>
               <div>
-                <h2 style={{ fontSize: "var(--t-md)", color: "var(--text)" }}>Vehículos por estado</h2>
-                <p style={{ fontSize: "var(--t-sm)", color: "var(--text-muted)", marginTop: 4 }}>
-                  Distribución en el rango seleccionado ({total} totales)
-                </p>
-              </div>
-              <ExportCsvButton
-                data={vehiclesByStatus}
-                filename="vehiculos-por-estado"
-                columns={[
-                  { header: "Estado", accessor: (g) => g._id },
-                  { header: "Cantidad", accessor: (g) => g.count },
-                ]}
-              />
-            </div>
-
-            {vehiclesByStatus.length === 0 ? (
-              <p style={{ color: "var(--text-soft)", textAlign: "center", padding: "var(--sp-5)" }}>
-                Sin datos disponibles
-              </p>
-            ) : (
-              <StatusDonutChart data={vehiclesByStatus} />
-            )}
-          </Card>
-
-          <Card padding="lg" style={{ marginTop: "var(--sp-5)" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "var(--sp-5)" }}>
-              <div>
                 <h2 style={{ fontSize: "var(--t-md)", color: "var(--text)" }}>Todos los vehículos</h2>
                 <p style={{ fontSize: "var(--t-sm)", color: "var(--text-muted)", marginTop: 4 }}>
-                  Inventario completo ({vehicles.length} vehículos)
+                  {filteredVehicles.length} de {vehicles.length} vehículos
                 </p>
               </div>
               <ExportCsvButton
-                data={vehicles}
+                data={filteredVehicles}
                 filename="todos-los-vehiculos"
                 columns={[
                   { header: "Título", accessor: (v) => v.title },
@@ -146,7 +143,7 @@ export default function AdminReports() {
                   { header: "Año", accessor: (v) => v.year },
                   { header: "Transmisión", accessor: (v) => (v.transmission ? TRANSMISSION_LABELS[v.transmission] ?? v.transmission : "") },
                   { header: "Carrocería", accessor: (v) => (v.bodyStyle ? BODY_STYLE_LABELS[v.bodyStyle] ?? v.bodyStyle : "") },
-                  { header: "Estado", accessor: (v) => STATUS_LABELS[v.status] ?? v.status },
+                  { header: "Estado", accessor: (v) => VEHICLE_STATUS_LABELS[v.status] ?? v.status },
                   { header: "Precio", accessor: (v) => v.currentPrice },
                   { header: "Kilometraje", accessor: (v) => v.mileage ?? "" },
                   {
@@ -183,7 +180,7 @@ export default function AdminReports() {
                     header: "Carrocería",
                     accessor: (v) => (v.bodyStyle ? BODY_STYLE_LABELS[v.bodyStyle] ?? v.bodyStyle : "—"),
                   },
-                  { header: "Estado", accessor: (v) => STATUS_LABELS[v.status] ?? v.status },
+                  { header: "Estado", accessor: (v) => VEHICLE_STATUS_LABELS[v.status] ?? v.status },
                   {
                     header: "Precio",
                     align: "right",
@@ -209,8 +206,8 @@ export default function AdminReports() {
                     ),
                   },
                 ]}
-                data={vehicles}
-                emptyMessage="No hay vehículos registrados"
+                data={filteredVehicles}
+                emptyMessage="No hay vehículos que coincidan con los filtros"
               />
             )}
           </Card>

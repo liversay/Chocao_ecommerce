@@ -1,7 +1,17 @@
 import { Outlet, NavLink, Link, useNavigate } from "react-router-dom";
 import { useClerk, useUser } from "@clerk/react";
 import { useState } from "react";
-import { Menu, X } from "lucide-react";
+import {
+  Menu,
+  X,
+  LayoutDashboard,
+  Car,
+  Gavel,
+  Users,
+  Receipt,
+  ChartColumn,
+  ScrollText,
+} from "lucide-react";
 import Button from "../components/Button";
 import Card from "../components/Card";
 import Logo from "../components/Logo";
@@ -10,18 +20,18 @@ const navGroups = [
   {
     label: "Gestión",
     items: [
-      { to: "/admin", label: "Dashboard", icon: "▤", end: true },
-      { to: "/admin/vehicles", label: "Vehículos", icon: "▦", end: false },
-      { to: "/admin/bids", label: "Pujas", icon: "◈", end: false },
-      { to: "/admin/users", label: "Usuarios", icon: "☺", end: false },
-      { to: "/admin/orders", label: "Órdenes", icon: "$", end: false },
+      { to: "/admin", label: "Dashboard", icon: LayoutDashboard, end: true },
+      { to: "/admin/vehicles", label: "Vehículos", icon: Car, end: false },
+      { to: "/admin/bids", label: "Pujas", icon: Gavel, end: false },
+      { to: "/admin/users", label: "Usuarios", icon: Users, end: false },
+      { to: "/admin/orders", label: "Órdenes", icon: Receipt, end: false },
     ],
   },
   {
     label: "Análisis",
     items: [
-      { to: "/admin/reports", label: "Reportes", icon: "▣", end: false },
-      { to: "/admin/audit", label: "Auditoría", icon: "⎘", end: false },
+      { to: "/admin/reports", label: "Reportes", icon: ChartColumn, end: false },
+      { to: "/admin/audit", label: "Auditoría", icon: ScrollText, end: false },
     ],
   },
 ];
@@ -83,7 +93,7 @@ export default function AdminLayout() {
                   className={({ isActive }) => "admin-nav-item" + (isActive ? " active" : "")}
                   onClick={() => setOpen(false)}
                 >
-                  <span style={{ fontSize: "0.9rem" }}>{item.icon}</span>
+                  <item.icon size={18} strokeWidth={1.75} />
                   {item.label}
                 </NavLink>
               ))}
