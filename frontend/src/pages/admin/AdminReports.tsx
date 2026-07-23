@@ -148,7 +148,7 @@ export default function AdminReports() {
                   { header: "Carrocería", accessor: (v) => (v.bodyStyle ? BODY_STYLE_LABELS[v.bodyStyle] ?? v.bodyStyle : "") },
                   { header: "Estado", accessor: (v) => STATUS_LABELS[v.status] ?? v.status },
                   { header: "Precio", accessor: (v) => v.currentPrice },
-                  { header: "Kilometraje", accessor: (v) => v.mileage },
+                  { header: "Kilometraje", accessor: (v) => v.mileage ?? "" },
                   {
                     header: "Fecha de registro",
                     accessor: (v) => new Date(v.createdAt).toLocaleDateString("es-PA", { day: "numeric", month: "short", year: "numeric" }),
@@ -196,7 +196,7 @@ export default function AdminReports() {
                   {
                     header: "Kilometraje",
                     align: "right",
-                    accessor: (v) => <span className="mono">{v.mileage.toLocaleString()}</span>,
+                    accessor: (v) => <span className="mono">{v.mileage != null ? v.mileage.toLocaleString() : "—"}</span>,
                   },
                   {
                     header: "Fecha de registro",
