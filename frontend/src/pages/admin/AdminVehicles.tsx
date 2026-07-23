@@ -27,6 +27,19 @@ const CONDITIONS = [
   { value: "poor", label: "Malo" },
 ];
 
+const TRANSMISSIONS = [
+  { value: "manual", label: "Manual" },
+  { value: "automatic", label: "Automático" },
+];
+
+const BODY_STYLES = [
+  { value: "sedan", label: "Sedán" },
+  { value: "suv", label: "SUV" },
+  { value: "pickup", label: "Pickup" },
+  { value: "van", label: "Bus / Coaster / Van" },
+  { value: "panel", label: "Panel" },
+];
+
 const CONDITION_HELP: Record<string, string> = {
   excellent: "Como nuevo: sin detalles estéticos ni mecánicos",
   good: "Buen estado general: detalles menores de uso",
@@ -52,7 +65,7 @@ const CURRENT_YEAR = new Date().getFullYear();
 
 const EMPTY_FORM = {
   title: "", brand: "", model: "", year: "", color: "", mileage: "",
-  condition: "good", description: "", basePrice: "",
+  condition: "good", transmission: "", bodyStyle: "", description: "", basePrice: "",
   status: "draft", auctionStartDate: "", auctionEndDate: "",
 };
 
@@ -99,6 +112,8 @@ export default function AdminVehicles() {
       year: String(v.year), color: v.color || "",
       mileage: String(v.mileage || ""),
       condition: v.condition || "good",
+      transmission: v.transmission || "",
+      bodyStyle: v.bodyStyle || "",
       description: v.description || "",
       basePrice: String(v.basePrice),
       status: v.status,
@@ -197,6 +212,8 @@ export default function AdminVehicles() {
       images,
       auctionStartDate: form.auctionStartDate || undefined,
       auctionEndDate: form.auctionEndDate || undefined,
+      transmission: form.transmission || undefined,
+      bodyStyle: form.bodyStyle || undefined,
     };
 
     try {
@@ -237,6 +254,9 @@ export default function AdminVehicles() {
     ...(form.color && !COLORS.includes(form.color) ? [{ value: form.color, label: form.color }] : []),
     ...COLORS.map((c) => ({ value: c, label: c })),
   ];
+
+  const transmissionOptions = [{ value: "", label: "— Seleccionar —" }, ...TRANSMISSIONS];
+  const bodyStyleOptions = [{ value: "", label: "— Seleccionar —" }, ...BODY_STYLES];
 
   return (
     <div className="fade-in">
@@ -347,6 +367,20 @@ export default function AdminVehicles() {
                     </p>
                   )}
                 </div>
+                <Select
+                  label="Transmisión"
+                  name="transmission"
+                  value={form.transmission}
+                  onChange={handleChange}
+                  options={transmissionOptions}
+                />
+                <Select
+                  label="Carrocería"
+                  name="bodyStyle"
+                  value={form.bodyStyle}
+                  onChange={handleChange}
+                  options={bodyStyleOptions}
+                />
               </div>
             </div>
 

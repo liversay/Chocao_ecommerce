@@ -35,6 +35,26 @@ describe("schemas", () => {
     expect(createVehicleSchema.safeParse({ ...valido, title: undefined }).success).toBe(false);
   });
 
+  test("createVehicleSchema valida transmission y bodyStyle", () => {
+    const valido = {
+      title: "Toyota Hilux 2020",
+      brand: "Toyota",
+      model: "Hilux",
+      year: 2020,
+      basePrice: 18000,
+      images: ["https://res.cloudinary.com/demo/image/upload/v1/hilux.jpg"],
+    };
+    expect(
+      createVehicleSchema.safeParse({ ...valido, transmission: "manual", bodyStyle: "suv" }).success
+    ).toBe(true);
+    expect(
+      createVehicleSchema.safeParse({ ...valido, transmission: "automatic", bodyStyle: "van" }).success
+    ).toBe(true);
+    expect(createVehicleSchema.safeParse(valido).success).toBe(true);
+    expect(createVehicleSchema.safeParse({ ...valido, transmission: "cvt" }).success).toBe(false);
+    expect(createVehicleSchema.safeParse({ ...valido, bodyStyle: "coupe" }).success).toBe(false);
+  });
+
   test("syncUserSchema exige email válido", () => {
     expect(syncUserSchema.safeParse({ name: "Ana", email: "ana@example.com" }).success).toBe(true);
     expect(syncUserSchema.safeParse({ name: "Ana", email: "no-email" }).success).toBe(false);

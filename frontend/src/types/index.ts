@@ -25,6 +25,8 @@ export interface Vehicle {
   color: string;
   mileage: number;
   condition: "excellent" | "good" | "fair" | "poor";
+  transmission?: "manual" | "automatic";
+  bodyStyle?: "sedan" | "suv" | "pickup" | "van" | "panel";
   description: string;
   images: string[];
   basePrice: number;

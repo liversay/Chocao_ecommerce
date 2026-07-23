@@ -19,6 +19,8 @@ export const createVehicleSchema = z.object({
   color: z.string().trim().max(40).optional(),
   mileage: z.number("El kilometraje debe ser numérico").nonnegative("El kilometraje no puede ser negativo").optional(),
   condition: z.enum(["excellent", "good", "fair", "poor"], "Condición inválida").optional(),
+  transmission: z.enum(["manual", "automatic"], "Transmisión inválida").optional(),
+  bodyStyle: z.enum(["sedan", "suv", "pickup", "van", "panel"], "Estilo de carrocería inválido").optional(),
   description: z.string().trim().max(4000, "La descripción no puede superar 4000 caracteres").optional(),
   images: z
     .array(z.string().url("Cada imagen debe ser una URL válida").max(2048), "Las imágenes deben ser una lista")
