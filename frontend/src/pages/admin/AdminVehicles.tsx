@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useApi } from "../../hooks/useApi";
 import { useRealtimeRefetch } from "../../hooks/useRealtimeRefetch";
 import Card from "../../components/Card";
@@ -20,6 +20,8 @@ const STATUSES = [
   { value: "closed", label: "Cerrado" },
   { value: "awarded", label: "Adjudicado" },
 ];
+
+const STATUS_FILTER_OPTIONS = [{ value: "", label: "Todos los estados" }, ...STATUSES];
 
 const CONDITIONS = [
   { value: "excellent", label: "Excelente" },
@@ -74,6 +76,14 @@ export default function AdminVehicles() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [initialStartDate, setInitialStartDate] = useState("");
 
+  // Filtros de la tabla (client-side, sobre la lista ya cargada)
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [priceMin, setPriceMin] = useState("");
+  const [priceMax, setPriceMax] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+
   function loadVehicles() {
     setLoading(true);
     api.get("/api/vehicles/admin/all")
@@ -84,6 +94,28 @@ export default function AdminVehicles() {
 
   useEffect(() => { loadVehicles(); }, []);
   useRealtimeRefetch(["vehicle.updated", "vehicle.removed", "vehicle.status", "bid.placed"], loadVehicles);
+
+  const filteredVehicles = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    const min = priceMin ? parseFloat(priceMin) : undefined;
+    const max = priceMax ? parseFloat(priceMax) : undefined;
+    const from = dateFrom ? new Date(`${dateFrom}T00:00:00`).getTime() : undefined;
+    const to = dateTo ? new Date(`${dateTo}T23:59:59.999`).getTime() : undefined;
+
+    return vehicles.filter((v) => {
+      if (q) {
+        const haystack = `${v.title} ${v.brand} ${v.model}`.toLowerCase();
+        if (!haystack.includes(q)) return false;
+      }
+      if (statusFilter && v.status !== statusFilter) return false;
+      if (min !== undefined && !isNaN(min) && v.currentPrice < min) return false;
+      if (max !== undefined && !isNaN(max) && v.currentPrice > max) return false;
+      const createdAt = new Date(v.createdAt).getTime();
+      if (from !== undefined && createdAt < from) return false;
+      if (to !== undefined && createdAt > to) return false;
+      return true;
+    });
+  }, [vehicles, search, statusFilter, priceMin, priceMax, dateFrom, dateTo]);
 
   function openCreate() {
     setEditing(null);
@@ -478,6 +510,56 @@ export default function AdminVehicles() {
         </Card>
       )}
 
+      {/* Filtros */}
+      {!loading && vehicles.length > 0 && (
+        <Card padding="md" style={{ marginBottom: "var(--sp-4)" }}>
+          <div className="grid-2" style={{ gap: "var(--sp-3)" }}>
+            <Input
+              label="Buscar"
+              placeholder="Título, marca o modelo..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            <Select
+              label="Estado"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              options={STATUS_FILTER_OPTIONS}
+            />
+            <div className="grid-2" style={{ gap: "var(--sp-3)" }}>
+              <Input
+                label="Precio mínimo"
+                type="number"
+                min={0}
+                value={priceMin}
+                onChange={(e) => setPriceMin(e.target.value)}
+              />
+              <Input
+                label="Precio máximo"
+                type="number"
+                min={0}
+                value={priceMax}
+                onChange={(e) => setPriceMax(e.target.value)}
+              />
+            </div>
+            <div className="grid-2" style={{ gap: "var(--sp-3)" }}>
+              <Input
+                label="Registrado desde"
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+              />
+              <Input
+                label="Registrado hasta"
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+              />
+            </div>
+          </div>
+        </Card>
+      )}
+
       {/* Table */}
       <Card>
         {loading ? (
@@ -543,6 +625,16 @@ export default function AdminVehicles() {
                 ),
               },
               {
+                header: "Fecha de registro",
+                sortKey: "createdAt",
+                sortValue: (v) => new Date(v.createdAt).getTime(),
+                accessor: (v) => (
+                  <span style={{ color: "var(--text-muted)", fontSize: "var(--t-xs)" }}>
+                    {new Date(v.createdAt).toLocaleDateString("es-PA", { day: "numeric", month: "short", year: "numeric" })}
+                  </span>
+                ),
+              },
+              {
                 header: "",
                 align: "right",
                 accessor: (v) => (
@@ -553,8 +645,8 @@ export default function AdminVehicles() {
                 ),
               },
             ]}
-            data={vehicles}
-            emptyMessage="No hay vehículos"
+            data={filteredVehicles}
+            emptyMessage="No hay vehículos que coincidan con los filtros"
           />
         )}
       </Card>
