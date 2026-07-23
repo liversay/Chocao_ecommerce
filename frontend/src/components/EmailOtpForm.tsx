@@ -39,8 +39,21 @@ export default function EmailOtpForm({ mode, redirectTo = "/vehicles" }: Props) 
   }, [resendCooldown]);
 
   function getErrorMessage(err: unknown): string {
-    const e = err as { errors?: { message?: string; longMessage?: string }[] };
-    return e?.errors?.[0]?.longMessage || e?.errors?.[0]?.message || "Algo salió mal. Intenta nuevamente.";
+    const e = err as { errors?: { code?: string; message?: string; longMessage?: string }[] };
+    const code = e?.errors?.[0]?.code;
+    const messages: Record<string, string> = {
+      form_identifier_not_found: "No encontramos una cuenta con ese correo.",
+      form_identifier_exists: "Ya existe una cuenta con ese correo.",
+      form_code_incorrect: "El código ingresado es incorrecto.",
+      form_param_format_invalid: "El formato del correo no es válido.",
+      form_param_value_invalid: "Uno de los datos ingresados no es válido.",
+      session_exists: "Ya tienes una sesión activa.",
+      too_many_requests: "Demasiados intentos. Espera un momento antes de volver a intentar.",
+      user_locked: "Tu cuenta fue bloqueada temporalmente por demasiados intentos. Intenta más tarde.",
+      captcha_invalid: "No pudimos verificar que eres una persona. Actualiza la página e intenta nuevamente.",
+      not_allowed_to_sign_up: "Este correo no tiene permitido registrarse.",
+    };
+    return (code && messages[code]) || "Algo salió mal. Intenta nuevamente.";
   }
 
   async function handleSendCode(e: React.FormEvent) {
