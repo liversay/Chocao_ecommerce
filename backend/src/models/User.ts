@@ -13,6 +13,7 @@ export interface IUser {
   email: string;
   role: "customer" | "admin";
   phone?: string;
+  banned: boolean;
   notificationPrefs: INotificationPrefs;
   createdAt: Date;
 }
@@ -36,6 +37,7 @@ const userSchema = new mongoose.Schema<IUser>(
     email: { type: String, required: true, unique: true },
     role: { type: String, enum: ["customer", "admin"], default: "customer" },
     phone: { type: String },
+    banned: { type: Boolean, default: false },
     notificationPrefs: { type: notificationPrefsSchema, default: () => ({}) },
   },
   { timestamps: { createdAt: "createdAt", updatedAt: false } }

@@ -13,6 +13,7 @@ describe("modelos de notificaciones y watchlist", () => {
       "payment_confirmed",
       "refunded",
       "watch_closing",
+      "banned",
     ]);
     expect(Notification.schema.path("read").options.default).toBe(false);
     expect(Notification.schema.path("userId")).toBeDefined();

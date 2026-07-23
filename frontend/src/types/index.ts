@@ -12,6 +12,7 @@ export interface User {
   email: string;
   role: "customer" | "admin";
   phone?: string;
+  banned: boolean;
   notificationPrefs: NotificationPrefs;
   createdAt: string;
 }
@@ -69,7 +70,7 @@ export interface DashboardSummary {
 
 export interface AppNotification {
   _id: string;
-  type: "outbid" | "won" | "payment_confirmed" | "refunded" | "watch_closing";
+  type: "outbid" | "won" | "payment_confirmed" | "refunded" | "watch_closing" | "banned";
   title: string;
   body: string;
   data?: { vehicleId?: string; bidId?: string; paymentId?: string };

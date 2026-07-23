@@ -40,9 +40,21 @@ async function getVerifiedUser(c: Context<AppEnv>) {
   return await User.findOne({ clerkId: payload.sub });
 }
 
+const BANNED_MESSAGE = "Tu cuenta ha sido suspendida. Contacta a soporte para más información.";
+
+// Bloqueo total: un usuario baneado no puede hacer NADA autenticado (ni leer
+// su perfil, ni pujar, ni pagar) — se rechaza aquí, antes de c.set("user", ...),
+// para que ninguna ruta downstream vea al usuario como "logueado".
+function rejectIfBanned(c: Context<AppEnv>, user: { banned: boolean }) {
+  if (user.banned) return c.json({ error: BANNED_MESSAGE }, 403);
+  return null;
+}
+
 export async function requireAuth(c: Context<AppEnv>, next: Next) {
   const user = await getVerifiedUser(c);
   if (!user) return c.json({ error: "No autorizado" }, 401);
+  const banned = rejectIfBanned(c, user);
+  if (banned) return banned;
   c.set("user", user);
   await next();
 }
@@ -50,6 +62,8 @@ export async function requireAuth(c: Context<AppEnv>, next: Next) {
 export async function requireAdmin(c: Context<AppEnv>, next: Next) {
   const user = await getVerifiedUser(c);
   if (!user) return c.json({ error: "No autorizado" }, 401);
+  const banned = rejectIfBanned(c, user);
+  if (banned) return banned;
   if (user.role !== "admin") return c.json({ error: "Acceso restringido: solo administradores" }, 403);
   c.set("user", user);
   await next();
@@ -60,6 +74,8 @@ export function requirePermission(permission: Permission) {
   return async (c: Context<AppEnv>, next: Next) => {
     const user = await getVerifiedUser(c);
     if (!user) return c.json({ error: "No autorizado" }, 401);
+    const banned = rejectIfBanned(c, user);
+    if (banned) return banned;
     if (!checkPermission(user, permission)) {
       return c.json({ error: `No tienes el permiso requerido (${permission})` }, 403);
     }

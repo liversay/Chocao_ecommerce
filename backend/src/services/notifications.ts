@@ -16,7 +16,9 @@ export interface NotifyInput {
   data?: INotificationData;
 }
 
-const PREF_KEY_BY_TYPE: Record<INotification["type"], keyof INotificationPrefs> = {
+// "banned" no tiene entrada aquí a propósito: es un aviso obligatorio de
+// estado de cuenta, no una preferencia que el usuario pueda silenciar.
+const PREF_KEY_BY_TYPE: Partial<Record<INotification["type"], keyof INotificationPrefs>> = {
   outbid: "outbid",
   won: "won",
   payment_confirmed: "payment",
@@ -34,7 +36,7 @@ export async function notify(input: NotifyInput): Promise<void> {
     if (!user) return;
 
     const prefKey = PREF_KEY_BY_TYPE[input.type];
-    if (!user.notificationPrefs[prefKey]) return;
+    if (prefKey && !user.notificationPrefs[prefKey]) return;
 
     const notification = await Notification.create({
       userId: user._id,

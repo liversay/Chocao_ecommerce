@@ -3,6 +3,8 @@ import "./mocks/stripe";
 import { describe, expect, test } from "bun:test";
 import { createApp } from "../app";
 import { AuditLog } from "../models/AuditLog";
+import { Notification } from "../models/Notification";
+import { User } from "../models/User";
 import { setupTestDB } from "./db";
 import { markSessionPaid } from "./mocks/stripe";
 import { authHeader, createBid, createUser, createVehicle } from "./factories";
@@ -122,5 +124,87 @@ describe("RBAC en rutas reales", () => {
     const [admin, customer] = await Promise.all([createUser({ role: "admin" }), createUser()]);
     expect((await app.request("/api/audit", { headers: authHeader(customer!) })).status).toBe(403);
     expect((await app.request("/api/audit", { headers: authHeader(admin!) })).status).toBe(200);
+  });
+});
+
+describe("baneo de usuarios", () => {
+  test("un customer no puede banear (403) y un admin sí, con auditoría y notificación", async () => {
+    const [admin, customer, objetivo] = await Promise.all([
+      createUser({ role: "admin" }),
+      createUser(),
+      createUser(),
+    ]);
+
+    const prohibido = await app.request(`/api/users/${objetivo!._id}/ban`, {
+      method: "PATCH",
+      headers: authHeader(customer!),
+      body: JSON.stringify({ banned: true }),
+    });
+    expect(prohibido.status).toBe(403);
+
+    const permitido = await app.request(`/api/users/${objetivo!._id}/ban`, {
+      method: "PATCH",
+      headers: authHeader(admin!),
+      body: JSON.stringify({ banned: true }),
+    });
+    expect(permitido.status).toBe(200);
+    expect((await User.findById(objetivo!._id))!.banned).toBe(true);
+
+    const entry = await AuditLog.findOne({ action: "user.ban" });
+    expect(entry).not.toBeNull();
+    expect(entry!.before).toEqual({ banned: false });
+    expect(entry!.after).toEqual({ banned: true });
+
+    const notification = await Notification.findOne({ userId: objetivo!._id, type: "banned" });
+    expect(notification).not.toBeNull();
+    expect(notification!.title).toContain("suspendida");
+  });
+
+  test("un admin no puede banearse a sí mismo", async () => {
+    const admin = await createUser({ role: "admin" });
+
+    const res = await app.request(`/api/users/${admin._id}/ban`, {
+      method: "PATCH",
+      headers: authHeader(admin),
+      body: JSON.stringify({ banned: true }),
+    });
+    expect(res.status).toBe(400);
+    expect((await User.findById(admin._id))!.banned).toBe(false);
+  });
+
+  test("desbanear limpia el flag y no reenvía la notificación de baneo", async () => {
+    const [admin, objetivo] = await Promise.all([createUser({ role: "admin" }), createUser({ banned: true })]);
+
+    const res = await app.request(`/api/users/${objetivo._id}/ban`, {
+      method: "PATCH",
+      headers: authHeader(admin),
+      body: JSON.stringify({ banned: false }),
+    });
+    expect(res.status).toBe(200);
+    expect((await User.findById(objetivo._id))!.banned).toBe(false);
+    expect(await Notification.countDocuments({ userId: objetivo._id, type: "banned" })).toBe(0);
+  });
+
+  test("un usuario baneado recibe 403 en cualquier ruta autenticada (perfil, pujar, pagar)", async () => {
+    const baneado = await createUser({ banned: true });
+    const vehicle = await createVehicle();
+
+    const me = await app.request("/api/users/me", { headers: authHeader(baneado) });
+    expect(me.status).toBe(403);
+    expect(((await me.json()) as { error: string }).error).toContain("suspendida");
+
+    const bid = await app.request(`/api/bids/vehicle/${vehicle._id}`, {
+      method: "POST",
+      headers: authHeader(baneado),
+      body: JSON.stringify({ amount: vehicle.currentPrice + 1000 }),
+    });
+    expect(bid.status).toBe(403);
+
+    const checkout = await app.request("/api/payments/create-checkout-session", {
+      method: "POST",
+      headers: authHeader(baneado),
+      body: JSON.stringify({ bidId: "000000000000000000000000" }),
+    });
+    expect(checkout.status).toBe(403);
   });
 });

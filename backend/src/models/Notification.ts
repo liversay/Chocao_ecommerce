@@ -8,7 +8,7 @@ export interface INotificationData {
 
 export interface INotification {
   userId: Types.ObjectId;
-  type: "outbid" | "won" | "payment_confirmed" | "refunded" | "watch_closing";
+  type: "outbid" | "won" | "payment_confirmed" | "refunded" | "watch_closing" | "banned";
   title: string;
   body: string;
   data?: INotificationData;
@@ -23,7 +23,7 @@ const notificationSchema = new mongoose.Schema<INotification>(
     userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     type: {
       type: String,
-      enum: ["outbid", "won", "payment_confirmed", "refunded", "watch_closing"],
+      enum: ["outbid", "won", "payment_confirmed", "refunded", "watch_closing", "banned"],
       required: true,
     },
     title: { type: String, required: true },

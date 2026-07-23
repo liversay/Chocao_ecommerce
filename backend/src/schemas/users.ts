@@ -9,6 +9,10 @@ export const patchRoleSchema = z.object({
   role: z.enum(["customer", "admin"], "Rol inválido"),
 });
 
+export const patchBanSchema = z.object({
+  banned: z.boolean("El estado de baneo debe ser verdadero o falso"),
+});
+
 export const updateProfileSchema = z.object({
   phone: z.string().trim().max(30).optional(),
   notificationPrefs: z

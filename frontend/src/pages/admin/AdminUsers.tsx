@@ -32,6 +32,8 @@ export default function AdminUsers() {
   const [role, setRole] = useState("");
   const [loading, setLoading] = useState(true);
   const [pendingChange, setPendingChange] = useState<{ user: AdminUser; role: "customer" | "admin" } | null>(null);
+  const [pendingBan, setPendingBan] = useState<{ user: AdminUser; banned: boolean } | null>(null);
+  const [banning, setBanning] = useState(false);
 
   function load() {
     setLoading(true);
@@ -69,6 +71,20 @@ export default function AdminUsers() {
     }
   }
 
+  async function confirmBan() {
+    if (!pendingBan) return;
+    setBanning(true);
+    try {
+      await api.patch(`/api/users/${pendingBan.user._id}/ban`, { banned: pendingBan.banned });
+    } catch (error) {
+      console.error("Error al cambiar el estado de baneo:", error);
+    } finally {
+      setBanning(false);
+      setPendingBan(null);
+      load();
+    }
+  }
+
   return (
     <div className="fade-in">
       <PageHeader
@@ -84,6 +100,7 @@ export default function AdminUsers() {
               { header: "Email", accessor: (u) => u.email },
               { header: "Rol", accessor: (u) => u.role },
               { header: "Pujas", accessor: (u) => u.bidCount },
+              { header: "Baneado", accessor: (u) => (u.banned ? "Sí" : "No") },
             ]}
           />
         }
@@ -127,6 +144,37 @@ export default function AdminUsers() {
                   </select>
                 ),
               },
+              {
+                header: "Estado",
+                accessor: (u) => (
+                  <span
+                    style={{
+                      display: "inline-block",
+                      padding: "2px 10px",
+                      borderRadius: "var(--radius-pill)",
+                      fontSize: "var(--t-xs)",
+                      fontWeight: 600,
+                      background: u.banned ? "var(--danger-soft)" : "var(--success-soft)",
+                      color: u.banned ? "var(--danger)" : "var(--success)",
+                    }}
+                  >
+                    {u.banned ? "Baneado" : "Activo"}
+                  </span>
+                ),
+              },
+              {
+                header: "",
+                align: "right",
+                accessor: (u) => (
+                  <Button
+                    size="sm"
+                    variant={u.banned ? "secondary" : "danger"}
+                    onClick={() => setPendingBan({ user: u, banned: !u.banned })}
+                  >
+                    {u.banned ? "Desbanear" : "Banear"}
+                  </Button>
+                ),
+              },
             ]}
             data={items}
             emptyMessage="Sin usuarios que coincidan con el filtro"
@@ -166,6 +214,44 @@ export default function AdminUsers() {
             <div style={{ display: "flex", gap: "var(--sp-2)", justifyContent: "center" }}>
               <Button variant="ghost" onClick={() => setPendingChange(null)}>Cancelar</Button>
               <Button variant="primary" onClick={confirmRoleChange}>Confirmar</Button>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {pendingBan && (
+        <div
+          onClick={() => (banning ? undefined : setPendingBan(null))}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0, 0, 0, 0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+            padding: "var(--sp-4)",
+          }}
+        >
+          <Card
+            variant="elevated"
+            padding="lg"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: 420, width: "100%", textAlign: "center" }}
+          >
+            <h3 style={{ fontSize: "var(--t-lg)", color: "var(--text)", marginBottom: "var(--sp-2)" }}>
+              {pendingBan.banned ? `¿Banear a ${pendingBan.user.name}?` : `¿Desbanear a ${pendingBan.user.name}?`}
+            </h3>
+            <p style={{ color: "var(--text-muted)", fontSize: "var(--t-sm)", marginBottom: "var(--sp-5)" }}>
+              {pendingBan.banned
+                ? "No podrá pujar, comprar ni acceder a la plataforma. Recibirá una notificación del baneo. Esta acción queda registrada en auditoría."
+                : "Recuperará acceso completo a la plataforma de inmediato. Esta acción queda registrada en auditoría."}
+            </p>
+            <div style={{ display: "flex", gap: "var(--sp-2)", justifyContent: "center" }}>
+              <Button variant="ghost" onClick={() => setPendingBan(null)} disabled={banning}>Cancelar</Button>
+              <Button variant={pendingBan.banned ? "danger" : "primary"} onClick={confirmBan} disabled={banning}>
+                {banning ? "Procesando..." : "Confirmar"}
+              </Button>
             </div>
           </Card>
         </div>

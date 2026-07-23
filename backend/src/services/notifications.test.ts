@@ -65,6 +65,19 @@ describe("notify", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  test("'banned' no tiene preferencia asociada: siempre se crea y envía, aunque todas las prefs estén en false", async () => {
+    const user = await createUser({
+      notificationPrefs: { outbid: false, won: false, payment: false, watchClosing: false },
+    });
+
+    await notify({ userId: user._id, type: "banned", title: "Tu cuenta ha sido suspendida", body: "..." });
+
+    const notifications = await Notification.find({ userId: user._id });
+    expect(notifications).toHaveLength(1);
+    expect(notifications[0]!.type).toBe("banned");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   test("payment_confirmed y refunded comparten la preferencia 'payment'", async () => {
     const user = await createUser({
       notificationPrefs: { outbid: true, won: true, payment: false, watchClosing: true },

@@ -15,6 +15,7 @@ const TYPE_ICON: Record<AppNotification["type"], string> = {
   payment_confirmed: "✓",
   refunded: "↺",
   watch_closing: "⏱",
+  banned: "⛔",
 };
 
 function timeAgo(iso: string): string {

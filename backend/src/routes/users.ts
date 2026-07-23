@@ -2,10 +2,11 @@ import { Hono } from "hono";
 import type { AppEnv } from "../types";
 import { requireAuth, requirePermission, verifyClerkToken } from "../middlewares/auth";
 import { rateLimit } from "../middlewares/rateLimit";
-import { NotFoundError, UnauthorizedError } from "../lib/errors";
+import { NotFoundError, UnauthorizedError, ValidationError } from "../lib/errors";
 import { idParamSchema, validate } from "../schemas/common";
-import { listUsersQuerySchema, patchRoleSchema, syncUserSchema, updateProfileSchema } from "../schemas/users";
+import { listUsersQuerySchema, patchBanSchema, patchRoleSchema, syncUserSchema, updateProfileSchema } from "../schemas/users";
 import { recordAudit } from "../services/audit";
+import { notify } from "../services/notifications";
 import { publishToAdmins } from "../services/realtime";
 import { listUsers } from "../services/users";
 import { User } from "../models/User";
@@ -81,6 +82,52 @@ users.patch(
     });
 
     publishToAdmins({ type: "user.updated", payload: { userId: user._id.toString() } });
+
+    return c.json(user);
+  }
+);
+
+users.patch(
+  "/:id/ban",
+  requirePermission("users:manage"),
+  validate("param", idParamSchema),
+  validate("json", patchBanSchema),
+  async (c) => {
+    const { id } = c.req.valid("param");
+    const { banned } = c.req.valid("json");
+    const actor = c.get("user");
+
+    if (id === actor._id.toString()) {
+      throw new ValidationError("No puedes banear tu propia cuenta");
+    }
+
+    const user = await User.findById(id);
+    if (!user) throw new NotFoundError("Usuario no encontrado");
+
+    const wasBanned = user.banned;
+    user.banned = banned;
+    await user.save();
+
+    await recordAudit({
+      actor,
+      action: banned ? "user.ban" : "user.unban",
+      resource: "user",
+      resourceId: user._id.toString(),
+      before: { banned: wasBanned },
+      after: { banned },
+      requestId: c.get("requestId"),
+    });
+
+    publishToAdmins({ type: "user.updated", payload: { userId: user._id.toString() } });
+
+    if (banned && !wasBanned) {
+      await notify({
+        userId: user._id,
+        type: "banned",
+        title: "Tu cuenta ha sido suspendida",
+        body: "Un administrador suspendió tu cuenta. No podrás pujar, comprar ni acceder a la plataforma mientras la suspensión esté activa.",
+      });
+    }
 
     return c.json(user);
   }
