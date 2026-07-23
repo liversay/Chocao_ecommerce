@@ -47,9 +47,13 @@ export async function getReports({ from, to }: ReportsParams = {}) {
   const [vehiclesByStatus, topBids, recentVehicles] = await Promise.all([
     Vehicle.aggregate([
       ...(from || to ? [{ $match: createdAtFilter }] : []),
-      { $group: { _id: "$status", count: { $sum: 1 } } },
+      // "amount" = valor de inventario por estado (suma de currentPrice), para
+      // la vista "Vehículos por estado" del dashboard (estado/cantidad/monto).
+      { $group: { _id: "$status", count: { $sum: 1 }, amount: { $sum: "$currentPrice" } } },
     ]),
-    Bid.find(createdAtFilter)
+    // Top pujas: solo ganadoras o activas — las superadas/pagadas no aportan
+    // a un ranking de "mejores pujas en curso" en el dashboard.
+    Bid.find({ ...createdAtFilter, status: { $in: ["winner", "active"] } })
       .populate("vehicleId", "title brand model")
       .populate("userId", "name email")
       .sort({ amount: -1 })

@@ -3,6 +3,8 @@ import { ChevronDown, SlidersHorizontal } from "lucide-react";
 import Card from "./Card";
 import Input from "./Input";
 import Select from "./Select";
+import FilterCheckboxGroup from "./FilterCheckboxGroup";
+import { toggleValue } from "../utils/toggleValue";
 import { BRANDS } from "../constants/brands";
 import type { RangeDraft, InstantFilters } from "../types/catalogFilters";
 
@@ -37,57 +39,6 @@ const SORT_OPTIONS = [
 ];
 
 const BRAND_OPTIONS = BRANDS.map((b) => ({ value: b, label: b }));
-
-function toggleValue(list: string[], value: string): string[] {
-  return list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
-}
-
-interface CheckboxGroupProps {
-  options: { value: string; label: string }[];
-  selected: string[];
-  onToggle: (value: string) => void;
-  scroll?: boolean;
-}
-
-function CheckboxGroup({ options, selected, onToggle, scroll }: CheckboxGroupProps) {
-  return (
-    <div
-      style={{
-        display: "flex",
-        flexWrap: "wrap",
-        gap: "var(--sp-2) var(--sp-3)",
-        marginTop: 6,
-        ...(scroll
-          ? {
-              maxHeight: 160,
-              overflowY: "auto",
-              padding: "var(--sp-2) var(--sp-3)",
-              border: "1px solid var(--border)",
-              borderRadius: "var(--radius-sm)",
-            }
-          : {}),
-      }}
-    >
-      {options.map((o) => (
-        <label
-          key={o.value}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-            fontSize: "var(--t-sm)",
-            color: "var(--text)",
-            cursor: "pointer",
-            userSelect: "none",
-          }}
-        >
-          <input type="checkbox" checked={selected.includes(o.value)} onChange={() => onToggle(o.value)} />
-          {o.label}
-        </label>
-      ))}
-    </div>
-  );
-}
 
 interface Props {
   range: RangeDraft;
@@ -186,7 +137,7 @@ export default function CatalogFilters({ range, onRangeChange, instant, onInstan
           <div className="grid-2" style={{ gap: "var(--sp-4)" }}>
             <div>
               <span className="field-label">Transmisión</span>
-              <CheckboxGroup
+              <FilterCheckboxGroup
                 options={TRANSMISSION_OPTIONS}
                 selected={instant.transmission}
                 onToggle={(v) => onInstantChange({ transmission: toggleValue(instant.transmission, v) })}
@@ -194,7 +145,7 @@ export default function CatalogFilters({ range, onRangeChange, instant, onInstan
             </div>
             <div>
               <span className="field-label">Carrocería</span>
-              <CheckboxGroup
+              <FilterCheckboxGroup
                 options={BODY_STYLE_OPTIONS}
                 selected={instant.bodyStyle}
                 onToggle={(v) => onInstantChange({ bodyStyle: toggleValue(instant.bodyStyle, v) })}
@@ -211,7 +162,7 @@ export default function CatalogFilters({ range, onRangeChange, instant, onInstan
                 </span>
               )}
             </div>
-            <CheckboxGroup
+            <FilterCheckboxGroup
               options={STATUS_OPTIONS}
               selected={instant.status}
               onToggle={(v) => onInstantChange({ status: toggleValue(instant.status, v) })}
@@ -220,7 +171,7 @@ export default function CatalogFilters({ range, onRangeChange, instant, onInstan
 
           <div>
             <span className="field-label">Marca</span>
-            <CheckboxGroup
+            <FilterCheckboxGroup
               options={BRAND_OPTIONS}
               selected={instant.brand}
               onToggle={(v) => onInstantChange({ brand: toggleValue(instant.brand, v) })}

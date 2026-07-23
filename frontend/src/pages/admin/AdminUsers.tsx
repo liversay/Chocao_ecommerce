@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { useApi } from "../../hooks/useApi";
 import { useRealtimeRefetch } from "../../hooks/useRealtimeRefetch";
+import { usePersistedState } from "../../hooks/usePersistedState";
 import Card from "../../components/Card";
 import Button from "../../components/Button";
 import Input from "../../components/Input";
@@ -10,6 +11,7 @@ import DataTable from "../../components/DataTable";
 import PageHeader from "../../components/PageHeader";
 import LoadingState from "../../components/LoadingState";
 import ExportCsvButton from "../../components/admin/ExportCsvButton";
+import FilterPanel from "../../components/admin/FilterPanel";
 import type { User } from "../../types";
 
 interface AdminUser extends User {
@@ -22,14 +24,29 @@ const ROLE_OPTIONS = [
   { value: "admin", label: "Administrador" },
 ];
 
+const BANNED_OPTIONS = [
+  { value: "", label: "Todos los estados" },
+  { value: "false", label: "Activos" },
+  { value: "true", label: "Baneados" },
+];
+
+interface DateRange {
+  from: string;
+  to: string;
+}
+
+const EMPTY_DATE_RANGE: DateRange = { from: "", to: "" };
+
 export default function AdminUsers() {
   const api = useApi();
   const [items, setItems] = useState<AdminUser[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [pages, setPages] = useState(1);
-  const [q, setQ] = useState("");
-  const [role, setRole] = useState("");
+  const [q, setQ] = usePersistedState("chocao.admin.filters.users.q", "");
+  const [role, setRole] = usePersistedState("chocao.admin.filters.users.role", "");
+  const [banned, setBanned] = usePersistedState("chocao.admin.filters.users.banned", "");
+  const [dateRange, setDateRange] = usePersistedState<DateRange>("chocao.admin.filters.users.dateRange", EMPTY_DATE_RANGE);
   const [loading, setLoading] = useState(true);
   const [pendingChange, setPendingChange] = useState<{ user: AdminUser; role: "customer" | "admin" } | null>(null);
   const [pendingBan, setPendingBan] = useState<{ user: AdminUser; banned: boolean } | null>(null);
@@ -40,6 +57,9 @@ export default function AdminUsers() {
     const params = new URLSearchParams({ page: String(page), limit: "20" });
     if (q.trim()) params.set("q", q.trim());
     if (role) params.set("role", role);
+    if (banned) params.set("banned", banned);
+    if (dateRange.from) params.set("from", dateRange.from);
+    if (dateRange.to) params.set("to", dateRange.to);
     api
       .get(`/api/users?${params}`)
       .then((r) => {
@@ -54,7 +74,7 @@ export default function AdminUsers() {
   useEffect(() => {
     const timer = setTimeout(load, q ? 300 : 0);
     return () => clearTimeout(timer);
-  }, [q, role, page]);
+  }, [q, role, banned, dateRange.from, dateRange.to, page]);
   useRealtimeRefetch(["user.updated"], load);
 
   async function confirmRoleChange() {
@@ -101,19 +121,35 @@ export default function AdminUsers() {
               { header: "Rol", accessor: (u) => u.role },
               { header: "Pujas", accessor: (u) => u.bidCount },
               { header: "Baneado", accessor: (u) => (u.banned ? "Sí" : "No") },
+              { header: "Fecha de creación", accessor: (u) => new Date(u.createdAt).toISOString() },
             ]}
           />
         }
       />
 
-      <Card padding="md" style={{ marginBottom: "var(--sp-4)", display: "flex", gap: "var(--sp-3)" }}>
-        <div style={{ flex: 1 }}>
-          <Input placeholder="Buscar por nombre o email..." value={q} onChange={(e) => { setPage(1); setQ(e.target.value); }} />
+      <FilterPanel
+        search={{ value: q, onChange: (v) => { setPage(1); setQ(v); }, placeholder: "Buscar por nombre o email..." }}
+        activeCount={(role ? 1 : 0) + (banned ? 1 : 0) + (dateRange.from || dateRange.to ? 1 : 0)}
+      >
+        <div className="grid-2" style={{ gap: "var(--sp-3)" }}>
+          <Select label="Rol" options={ROLE_OPTIONS} value={role} onChange={(e) => { setPage(1); setRole(e.target.value); }} />
+          <Select label="Estado" options={BANNED_OPTIONS} value={banned} onChange={(e) => { setPage(1); setBanned(e.target.value); }} />
         </div>
-        <div style={{ width: 220 }}>
-          <Select options={ROLE_OPTIONS} value={role} onChange={(e) => { setPage(1); setRole(e.target.value); }} />
+        <div className="grid-2" style={{ gap: "var(--sp-3)" }}>
+          <Input
+            label="Creado desde"
+            type="date"
+            value={dateRange.from}
+            onChange={(e) => { setPage(1); setDateRange((prev) => ({ ...prev, from: e.target.value })); }}
+          />
+          <Input
+            label="Creado hasta"
+            type="date"
+            value={dateRange.to}
+            onChange={(e) => { setPage(1); setDateRange((prev) => ({ ...prev, to: e.target.value })); }}
+          />
         </div>
-      </Card>
+      </FilterPanel>
 
       <Card padding="none">
         {loading && items.length === 0 ? (
@@ -130,6 +166,16 @@ export default function AdminUsers() {
               { header: "Pujas", align: "right", sortKey: "bidCount", sortValue: (u) => u.bidCount, accessor: (u) => (
                 <span className="mono">{u.bidCount}</span>
               ) },
+              {
+                header: "Fecha de creación",
+                sortKey: "createdAt",
+                sortValue: (u) => new Date(u.createdAt).getTime(),
+                accessor: (u) => (
+                  <span style={{ color: "var(--text-muted)", fontSize: "var(--t-xs)" }}>
+                    {new Date(u.createdAt).toLocaleDateString("es-PA", { day: "numeric", month: "short", year: "numeric" })}
+                  </span>
+                ),
+              },
               {
                 header: "Rol",
                 accessor: (u) => (

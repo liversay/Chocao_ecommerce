@@ -28,6 +28,12 @@ export const updateProfileSchema = z.object({
 export const listUsersQuerySchema = z.object({
   q: z.string().trim().max(100).optional(),
   role: z.enum(["customer", "admin"]).optional(),
+  // z.coerce.boolean() coacciona "false" (string no vacío) a `true` — se usa
+  // un enum explícito en su lugar para que el filtro "Activos"/"Baneados"
+  // funcione con el query param real ("true"/"false").
+  banned: z.enum(["true", "false"]).transform((v) => v === "true").optional(),
+  from: z.coerce.date("Fecha de inicio inválida").optional(),
+  to: z.coerce.date("Fecha de fin inválida").optional(),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
 });

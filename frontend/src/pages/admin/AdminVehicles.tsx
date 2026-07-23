@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useApi } from "../../hooks/useApi";
 import { useRealtimeRefetch } from "../../hooks/useRealtimeRefetch";
+import { usePersistedState } from "../../hooks/usePersistedState";
 import Card from "../../components/Card";
 import Button from "../../components/Button";
 import Input from "../../components/Input";
@@ -10,7 +11,11 @@ import PageHeader from "../../components/PageHeader";
 import LoadingState from "../../components/LoadingState";
 import EmptyState from "../../components/EmptyState";
 import ImageDropzone from "../../components/ImageDropzone";
+import AdminVehicleFilters from "../../components/admin/AdminVehicleFilters";
 import { BRANDS } from "../../constants/brands";
+import { filterAdminVehicles } from "../../utils/filterAdminVehicles";
+import { EMPTY_ADMIN_VEHICLE_RANGE, EMPTY_ADMIN_VEHICLE_INSTANT } from "../../types/adminVehicleFilters";
+import type { AdminVehicleRangeDraft, AdminVehicleInstantFilters } from "../../types/adminVehicleFilters";
 import type { Vehicle } from "../../types";
 
 const STATUSES = [
@@ -20,8 +25,6 @@ const STATUSES = [
   { value: "closed", label: "Cerrado" },
   { value: "awarded", label: "Adjudicado" },
 ];
-
-const STATUS_FILTER_OPTIONS = [{ value: "", label: "Todos los estados" }, ...STATUSES];
 
 const CONDITIONS = [
   { value: "excellent", label: "Excelente" },
@@ -76,13 +79,24 @@ export default function AdminVehicles() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [initialStartDate, setInitialStartDate] = useState("");
 
-  // Filtros de la tabla (client-side, sobre la lista ya cargada)
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [priceMin, setPriceMin] = useState("");
-  const [priceMax, setPriceMax] = useState("");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
+  // Filtros de la tabla (client-side, sobre la lista ya cargada). Persisten
+  // entre visitas (localStorage) igual que en el resto del backoffice.
+  const [search, setSearch] = usePersistedState("chocao.admin.filters.vehicles.search", "");
+  const [range, setRange] = usePersistedState<AdminVehicleRangeDraft>(
+    "chocao.admin.filters.vehicles.range",
+    EMPTY_ADMIN_VEHICLE_RANGE
+  );
+  const [instant, setInstant] = usePersistedState<AdminVehicleInstantFilters>(
+    "chocao.admin.filters.vehicles.instant",
+    EMPTY_ADMIN_VEHICLE_INSTANT
+  );
+
+  function updateRange(patch: Partial<AdminVehicleRangeDraft>) {
+    setRange((prev) => ({ ...prev, ...patch }));
+  }
+  function updateInstant(patch: Partial<AdminVehicleInstantFilters>) {
+    setInstant((prev) => ({ ...prev, ...patch }));
+  }
 
   function loadVehicles() {
     setLoading(true);
@@ -95,27 +109,10 @@ export default function AdminVehicles() {
   useEffect(() => { loadVehicles(); }, []);
   useRealtimeRefetch(["vehicle.updated", "vehicle.removed", "vehicle.status", "bid.placed"], loadVehicles);
 
-  const filteredVehicles = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    const min = priceMin ? parseFloat(priceMin) : undefined;
-    const max = priceMax ? parseFloat(priceMax) : undefined;
-    const from = dateFrom ? new Date(`${dateFrom}T00:00:00`).getTime() : undefined;
-    const to = dateTo ? new Date(`${dateTo}T23:59:59.999`).getTime() : undefined;
-
-    return vehicles.filter((v) => {
-      if (q) {
-        const haystack = `${v.title} ${v.brand} ${v.model}`.toLowerCase();
-        if (!haystack.includes(q)) return false;
-      }
-      if (statusFilter && v.status !== statusFilter) return false;
-      if (min !== undefined && !isNaN(min) && v.currentPrice < min) return false;
-      if (max !== undefined && !isNaN(max) && v.currentPrice > max) return false;
-      const createdAt = new Date(v.createdAt).getTime();
-      if (from !== undefined && createdAt < from) return false;
-      if (to !== undefined && createdAt > to) return false;
-      return true;
-    });
-  }, [vehicles, search, statusFilter, priceMin, priceMax, dateFrom, dateTo]);
+  const filteredVehicles = useMemo(
+    () => filterAdminVehicles(vehicles, search, range, instant),
+    [vehicles, search, range, instant]
+  );
 
   function openCreate() {
     setEditing(null);
@@ -512,52 +509,14 @@ export default function AdminVehicles() {
 
       {/* Filtros */}
       {!loading && vehicles.length > 0 && (
-        <Card padding="md" style={{ marginBottom: "var(--sp-4)" }}>
-          <div className="grid-2" style={{ gap: "var(--sp-3)" }}>
-            <Input
-              label="Buscar"
-              placeholder="Título, marca o modelo..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-            <Select
-              label="Estado"
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              options={STATUS_FILTER_OPTIONS}
-            />
-            <div className="grid-2" style={{ gap: "var(--sp-3)" }}>
-              <Input
-                label="Precio mínimo"
-                type="number"
-                min={0}
-                value={priceMin}
-                onChange={(e) => setPriceMin(e.target.value)}
-              />
-              <Input
-                label="Precio máximo"
-                type="number"
-                min={0}
-                value={priceMax}
-                onChange={(e) => setPriceMax(e.target.value)}
-              />
-            </div>
-            <div className="grid-2" style={{ gap: "var(--sp-3)" }}>
-              <Input
-                label="Registrado desde"
-                type="date"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-              />
-              <Input
-                label="Registrado hasta"
-                type="date"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-              />
-            </div>
-          </div>
-        </Card>
+        <AdminVehicleFilters
+          search={search}
+          onSearchChange={setSearch}
+          range={range}
+          onRangeChange={updateRange}
+          instant={instant}
+          onInstantChange={updateInstant}
+        />
       )}
 
       {/* Table */}

@@ -59,6 +59,17 @@ export async function requireAuth(c: Context<AppEnv>, next: Next) {
   await next();
 }
 
+// Variante de requireAuth que NO aplica rejectIfBanned: un usuario baneado
+// sigue sin poder pujar, pagar ni escribir nada, pero debe poder enterarse
+// de que fue baneado (y ver el resto de sus notificaciones). Úsese solo en
+// endpoints de solo-lectura donde eso es intencional (GET de notificaciones).
+export async function requireAuthAllowBanned(c: Context<AppEnv>, next: Next) {
+  const user = await getVerifiedUser(c);
+  if (!user) return c.json({ error: "No autorizado" }, 401);
+  c.set("user", user);
+  await next();
+}
+
 export async function requireAdmin(c: Context<AppEnv>, next: Next) {
   const user = await getVerifiedUser(c);
   if (!user) return c.json({ error: "No autorizado" }, 401);
