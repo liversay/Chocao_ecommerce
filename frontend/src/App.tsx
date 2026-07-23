@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { useUser, useAuth } from "@clerk/react";
 import { useApi } from "./hooks/useApi";
 import { RealtimeProvider } from "./context/RealtimeContext";
+import { WatchlistProvider } from "./context/WatchlistContext";
 
 import PublicLayout from "./layouts/PublicLayout";
 import AdminLayout from "./layouts/AdminLayout";
@@ -60,6 +61,7 @@ export default function App() {
     <BrowserRouter>
       <ErrorBoundary>
       <RealtimeProvider>
+      <WatchlistProvider>
       <SyncUser />
       <Routes>
         <Route element={<PublicLayout />}>
@@ -163,6 +165,7 @@ export default function App() {
           <Route path="audit" element={<AdminAudit />} />
         </Route>
       </Routes>
+      </WatchlistProvider>
       </RealtimeProvider>
       </ErrorBoundary>
     </BrowserRouter>
