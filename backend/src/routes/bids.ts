@@ -16,13 +16,25 @@ bids.get("/", requirePermission("report:read"), async (c) => {
   return c.json(list);
 });
 
-// Customer: my bids
+// Customer: my bids. Las pagadas traen `payment: {id, status}` (igual que
+// /my/purchases) — VehicleDetailPage lo usa para enlazar "Ver recibo" sin
+// depender de qué endpoint trajo la puja.
 bids.get("/my", requireAuth, async (c) => {
   const user = c.get("user");
   const list = await Bid.find({ userId: user._id })
     .populate("vehicleId")
-    .sort({ createdAt: -1 });
-  return c.json(list);
+    .sort({ createdAt: -1 })
+    .lean();
+
+  const paidIds = list.filter((b) => b.status === "paid").map((b) => b._id);
+  const payments = paidIds.length ? await Payment.find({ bidId: { $in: paidIds } }).lean() : [];
+  const paymentByBid = new Map(payments.map((p) => [p.bidId.toString(), p]));
+
+  const withPayment = list.map((bid) => {
+    const payment = paymentByBid.get(bid._id.toString());
+    return { ...bid, payment: payment && { id: payment._id.toString(), status: payment.status } };
+  });
+  return c.json(withPayment);
 });
 
 // Customer: my purchases (paid bids only). Cada fila trae `payment: {id,

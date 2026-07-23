@@ -9,6 +9,7 @@ import PageHeader from "../components/PageHeader";
 import EmptyState from "../components/EmptyState";
 import LoadingState from "../components/LoadingState";
 import StatusBadge from "../components/StatusBadge";
+import { startCheckout } from "../lib/checkout";
 import type { Bid, Vehicle } from "../types";
 
 const CAR_PLACEHOLDER = "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=400&q=80";
@@ -27,8 +28,7 @@ export default function MyBidsPage() {
 
   async function handleCheckout(bid: Bid) {
     try {
-      const { data } = await api.post("/api/payments/create-checkout-session", { bidId: bid._id });
-      window.location.href = data.url;
+      await startCheckout(api, bid._id);
     } catch {
       alert("Error al iniciar el pago. Intenta nuevamente.");
     }

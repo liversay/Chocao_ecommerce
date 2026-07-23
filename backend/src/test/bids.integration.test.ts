@@ -95,6 +95,42 @@ describe("reglas de negocio de pujas", () => {
   });
 });
 
+describe("GET /api/bids/my", () => {
+  // VehicleDetailPage usa este endpoint (no /my/purchases) para decidir si
+  // muestra "Ver recibo" en la ficha del vehículo — debe traer payment igual.
+  test("una puja pagada trae payment: {id, status}; una sin pagar no trae payment", async () => {
+    const buyer = await createUser();
+    const vehicle = await createVehicle();
+    const paidBid = await createBid(vehicle, buyer, { amount: 12_000, status: "winner" });
+    const otherVehicle = await createVehicle();
+    const unpaidBid = await createBid(otherVehicle, buyer, { amount: 5_000, status: "winner" });
+
+    const checkout = await app.request("/api/payments/create-checkout-session", {
+      method: "POST",
+      headers: authHeader(buyer),
+      body: JSON.stringify({ bidId: paidBid._id.toString() }),
+    });
+    expect(checkout.status).toBe(200);
+    const payment = (await Payment.findOne({ bidId: paidBid._id }))!;
+    markSessionPaid(payment.stripeSessionId!);
+    await app.request(`/api/payments/success?session_id=${payment.stripeSessionId}`, {
+      headers: authHeader(buyer),
+    });
+
+    const res = await app.request("/api/bids/my", { headers: authHeader(buyer) });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { _id: string; payment?: { id: string; status: string } }[];
+
+    const paidRow = body.find((b) => b._id === paidBid._id.toString());
+    expect(paidRow?.payment).toBeDefined();
+    expect(paidRow!.payment!.id).toBe(payment._id.toString());
+    expect(paidRow!.payment!.status).toBe("paid");
+
+    const unpaidRow = body.find((b) => b._id === unpaidBid._id.toString());
+    expect(unpaidRow?.payment).toBeUndefined();
+  });
+});
+
 describe("GET /api/bids/my/purchases", () => {
   // Regresión: la ruta tenía su propia consulta inline que nunca adjuntaba
   // el pago, dejando el botón "Ver recibo" del frontend (MyPurchasesPage)

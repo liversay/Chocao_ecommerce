@@ -14,6 +14,7 @@ import EmptyState from "../components/EmptyState";
 import Countdown from "../components/Countdown";
 import WatchlistButton from "../components/WatchlistButton";
 import { CONDITION_LABELS } from "../lib/labels";
+import { startCheckout } from "../lib/checkout";
 import type { Vehicle, Bid } from "../types";
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
@@ -33,9 +34,11 @@ export default function VehicleDetailPage() {
 
   const [vehicle, setVehicle] = useState<Vehicle | null>(null);
   const [bids, setBids] = useState<Bid[]>([]);
+  const [myBid, setMyBid] = useState<Bid | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeImg, setActiveImg] = useState(0);
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; msg: string } | null>(null);
+  const [payError, setPayError] = useState("");
   // currentPrice ya reflejado en pantalla — evita duplicar la fila del
   // historial cuando el eco en vivo de la propia puja (canal público, le
   // llega a todos incluido el postor) llega después de que loadData() ya
@@ -60,6 +63,28 @@ export default function VehicleDetailPage() {
 
   useEffect(() => { loadData(); }, [id]);
 
+  // Puja propia de este vehículo (si la hay) — determina si mostramos el
+  // botón de pago en vez del formulario de pujas. Requiere sesión, ya que
+  // /api/bids/my es un endpoint autenticado.
+  function loadMyBid() {
+    if (!isSignedIn) {
+      setMyBid(null);
+      return;
+    }
+    api
+      .get("/api/bids/my")
+      .then((r) => {
+        const mine = (r.data as Bid[]).find((b) => {
+          const vehicleId = typeof b.vehicleId === "string" ? b.vehicleId : b.vehicleId?._id;
+          return vehicleId === id;
+        });
+        setMyBid(mine ?? null);
+      })
+      .catch(() => setMyBid(null));
+  }
+
+  useEffect(() => { loadMyBid(); }, [id, isSignedIn]);
+
   // Precio/historial en vivo (canal público, funciona sin sesión): otro
   // dispositivo pujando por este mismo vehículo actualiza esta pantalla sin
   // recargar. Evita el re-fetch completo — solo aplica el delta recibido.
@@ -78,6 +103,7 @@ export default function VehicleDetailPage() {
     const unsubStatus = subscribe("vehicle.status", (payload) => {
       if (payload.vehicleId !== id) return;
       setVehicle((v) => (v ? { ...v, status: payload.status as Vehicle["status"] } : v));
+      loadMyBid(); // la subasta puede haber cerrado con este usuario como ganador
     });
     return () => {
       unsubBid();
@@ -90,6 +116,16 @@ export default function VehicleDetailPage() {
     setFeedback({ type: "success", msg: `Puja de $${amount.toLocaleString()} registrada` });
     setTimeout(() => setFeedback(null), 4000);
     loadData();
+  }
+
+  async function handleCheckout() {
+    if (!myBid) return;
+    setPayError("");
+    try {
+      await startCheckout(api, myBid._id);
+    } catch {
+      setPayError("Error al iniciar el pago. Intenta nuevamente.");
+    }
   }
 
   if (loading) return <div className="container" style={{ padding: "var(--sp-6) var(--sp-5)" }}><LoadingState /></div>;
@@ -265,7 +301,52 @@ export default function VehicleDetailPage() {
               </div>
             )}
 
-            {!isActive || hasEnded ? (
+            {myBid?.status === "winner" ? (
+              <div style={{ textAlign: "center" }}>
+                <div
+                  style={{
+                    padding: "12px 16px",
+                    borderRadius: "var(--radius-sm)",
+                    background: "var(--success-soft)",
+                    color: "var(--success)",
+                    fontSize: "var(--t-sm)",
+                    fontWeight: 600,
+                    marginBottom: "var(--sp-3)",
+                  }}
+                >
+                  ¡Ganaste esta subasta! Completa el pago para adjudicarte el vehículo.
+                </div>
+                {payError && (
+                  <p style={{ color: "var(--danger)", fontSize: "var(--t-xs)", marginBottom: "var(--sp-3)" }}>
+                    {payError}
+                  </p>
+                )}
+                <Button variant="primary" fullWidth size="lg" onClick={handleCheckout}>
+                  Pagar ahora
+                </Button>
+              </div>
+            ) : myBid?.status === "paid" ? (
+              <div style={{ textAlign: "center" }}>
+                <div
+                  style={{
+                    padding: "12px 16px",
+                    borderRadius: "var(--radius-sm)",
+                    background: "var(--success-soft)",
+                    color: "var(--success)",
+                    fontSize: "var(--t-sm)",
+                    fontWeight: 600,
+                    marginBottom: "var(--sp-3)",
+                  }}
+                >
+                  Ya pagaste este vehículo.
+                </div>
+                {myBid.payment && (
+                  <Link to={`/receipt/${myBid.payment.id}`}>
+                    <Button variant="secondary" fullWidth>Ver recibo</Button>
+                  </Link>
+                )}
+              </div>
+            ) : !isActive || hasEnded ? (
               <div
                 style={{
                   padding: "var(--sp-4)",
