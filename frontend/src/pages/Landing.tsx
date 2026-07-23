@@ -22,14 +22,25 @@ const steps = [
 export default function Landing() {
   const { isSignedIn } = useAuth();
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [timedOut, setTimedOut] = useState(false);
 
   useEffect(() => {
+    const timeoutId = setTimeout(() => setTimedOut(true), 5000);
+
     axios.get(`${BASE_URL}/api/vehicles?limit=50`)
       .then((r) => setVehicles(r.data.items ?? r.data))
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => {
+        clearTimeout(timeoutId);
+        setLoading(false);
+      });
+
+    return () => clearTimeout(timeoutId);
   }, []);
 
   const heroVehicle = vehicles.find((v) => v.status === "active") || vehicles[0];
+  const showHeroSkeleton = loading && !timedOut;
 
   const activeVehicles = vehicles.filter((v) => v.status === "active");
   const featuredVehicles = (activeVehicles.length > 0 ? activeVehicles : vehicles).slice(0, 4);
@@ -124,6 +135,19 @@ export default function Landing() {
                   </div>
                 </Card>
               </Link>
+            ) : showHeroSkeleton ? (
+              <Card variant="elevated" padding="lg">
+                <div
+                  className="skeleton"
+                  role="status"
+                  aria-label="Cargando vehículo destacado"
+                  style={{
+                    borderRadius: "var(--radius-md)",
+                    height: 220,
+                    marginBottom: "var(--sp-4)",
+                  }}
+                />
+              </Card>
             ) : (
               <Card variant="elevated" padding="lg">
                 <div

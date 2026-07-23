@@ -357,6 +357,24 @@ h1, h2, h3, h4 {
 }
 .fade-in { animation: fadeIn 0.35s ease both; }
 
+/* skeleton / shimmer loading placeholder */
+@keyframes skeletonShimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg, var(--surface) 25%, var(--border) 50%, var(--surface) 75%);
+  background-size: 400% 100%;
+  animation: skeletonShimmer 1.6s ease-in-out infinite;
+  border: 1px solid var(--border);
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+    background: var(--bg-alt);
+  }
+}
+
 /* ================= RESPONSIVE ================= */
 @media (max-width: 900px) {
   .detail-grid { grid-template-columns: 1fr; }
