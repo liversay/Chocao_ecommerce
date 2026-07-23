@@ -1,6 +1,7 @@
 import { Outlet, NavLink, Link, useNavigate } from "react-router-dom";
 import { useClerk, useUser } from "@clerk/react";
 import { useState } from "react";
+import { Menu, X } from "lucide-react";
 import Button from "../components/Button";
 import Card from "../components/Card";
 import Logo from "../components/Logo";
@@ -30,12 +31,26 @@ export default function AdminLayout() {
   const { user } = useUser();
   const navigate = useNavigate();
   const [showConfirm, setShowConfirm] = useState(false);
+  const [open, setOpen] = useState(false);
 
   const initials = (user?.firstName?.[0] || user?.emailAddresses[0]?.emailAddress?.[0] || "?").toUpperCase();
 
   return (
     <div className="admin-theme admin-shell">
-      <aside className="admin-sidebar">
+      <button
+        type="button"
+        className="admin-hamburger-btn"
+        aria-label="Menú de administración"
+        onClick={() => setOpen((o) => !o)}
+      >
+        {open ? <X size={20} /> : <Menu size={20} />}
+      </button>
+
+      {open && (
+        <div className="admin-sidebar-backdrop" onClick={() => setOpen(false)} />
+      )}
+
+      <aside className={"admin-sidebar" + (open ? " admin-sidebar-open" : "")}>
         <Link
           to="/"
           style={{
@@ -66,6 +81,7 @@ export default function AdminLayout() {
                   to={item.to}
                   end={item.end}
                   className={({ isActive }) => "admin-nav-item" + (isActive ? " active" : "")}
+                  onClick={() => setOpen(false)}
                 >
                   <span style={{ fontSize: "0.9rem" }}>{item.icon}</span>
                   {item.label}
@@ -108,7 +124,7 @@ export default function AdminLayout() {
             Cerrar sesión
           </Button>
 
-          <Link to="/" className="admin-nav-item">
+          <Link to="/" className="admin-nav-item" onClick={() => setOpen(false)}>
             ← Ver sitio público
           </Link>
         </div>
