@@ -342,6 +342,24 @@ h1, h2, h3, h4 {
 /* precio dorado (solo público) */
 .price-accent { color: var(--accent); font-weight: 700; }
 
+/* ================= NAVBAR RESPONSIVE ================= */
+/* Paneles de dropdown (notificaciones / usuario): anclados al botón que
+   los abre en desktop, anclados al viewport en móvil (ver media query). */
+.dropdown-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  max-width: calc(100vw - 24px);
+  z-index: 200;
+}
+.notification-panel { width: 340px; }
+.user-menu-panel { min-width: 240px; }
+
+/* Nav central de desktop / botón hamburguesa: visibilidad se invierte
+   por debajo del breakpoint móvil (ver media query). */
+.navbar-hamburger-btn { display: none; }
+.navbar-mobile-drawer { display: none; }
+
 /* ================= UTILIDADES ================= */
 .grid-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--sp-5); }
 
@@ -379,4 +397,14 @@ h1, h2, h3, h4 {
   .steps-row { grid-template-columns: 1fr; }
   .stat-strip-item + .stat-strip-item { border-left: none; }
   .navbar-tagline { display: none; }
+
+  .dropdown-panel {
+    position: fixed;
+    top: 76px;
+    right: 8px;
+  }
+
+  .navbar-center-desktop { display: none; }
+  .navbar-hamburger-btn { display: inline-flex; }
+  .navbar-mobile-drawer { display: flex; }
 }

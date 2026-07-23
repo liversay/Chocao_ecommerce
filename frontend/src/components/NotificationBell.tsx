@@ -153,10 +153,7 @@ export default function NotificationBell() {
       </button>
 
       {open && (
-        <div
-          className="card card-elevated"
-          style={{ position: "absolute", top: "calc(100% + 8px)", right: 0, width: 340, zIndex: 200 }}
-        >
+        <div className="card card-elevated dropdown-panel notification-panel">
           <div
             style={{
               padding: "var(--sp-3) var(--sp-4)",

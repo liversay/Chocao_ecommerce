@@ -1,11 +1,12 @@
 import { Link, NavLink } from "react-router-dom";
 import { useAuth } from "@clerk/react";
+import { Menu, X } from "lucide-react";
 import Button from "./Button";
 import Logo from "./Logo";
 import UserMenu from "./UserMenu";
 import NotificationBell from "./NotificationBell";
 import WatchlistBell from "./WatchlistBell";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useApi } from "../hooks/useApi";
 
 const navLinkStyle = (active: boolean): React.CSSProperties => ({
@@ -21,6 +22,8 @@ export default function Navbar() {
   const { isSignedIn, isLoaded } = useAuth();
   const api = useApi();
   const [role, setRole] = useState<string | null>(null);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const mobileNavRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (isSignedIn && isLoaded) {
@@ -29,6 +32,18 @@ export default function Navbar() {
       setRole(null);
     }
   }, [isSignedIn, isLoaded]);
+
+  useEffect(() => {
+    function onClick(e: MouseEvent) {
+      if (mobileNavRef.current && !mobileNavRef.current.contains(e.target as Node)) setMobileNavOpen(false);
+    }
+    if (mobileNavOpen) document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, [mobileNavOpen]);
+
+  function closeMobileNav() {
+    setMobileNavOpen(false);
+  }
 
   return (
     <nav
@@ -73,8 +88,9 @@ export default function Navbar() {
           </div>
         </Link>
 
-        {/* Center nav */}
+        {/* Center nav (desktop) */}
         <div
+          className="navbar-center-desktop"
           style={{
             display: "flex",
             alignItems: "center",
@@ -101,6 +117,78 @@ export default function Navbar() {
 
         {/* Right actions */}
         <div style={{ display: "flex", alignItems: "center", gap: "var(--sp-3)" }}>
+          <div ref={mobileNavRef} style={{ position: "relative" }}>
+            <button
+              className="navbar-hamburger-btn"
+              onClick={() => setMobileNavOpen((o) => !o)}
+              aria-label="Menú de navegación"
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: "50%",
+                background: "var(--surface)",
+                border: "1px solid var(--border)",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              {mobileNavOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
+
+            {mobileNavOpen && (
+              <div
+                className="navbar-mobile-drawer"
+                style={{
+                  position: "fixed",
+                  top: 76,
+                  left: 12,
+                  right: 12,
+                  background: "var(--surface)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "var(--radius-md)",
+                  boxShadow: "var(--shadow-sm)",
+                  zIndex: 200,
+                  padding: "var(--sp-3)",
+                  flexDirection: "column",
+                  gap: "var(--sp-1)",
+                }}
+              >
+                <NavLink
+                  to="/"
+                  end
+                  onClick={closeMobileNav}
+                  style={({ isActive }) => ({ ...navLinkStyle(isActive), padding: "10px 12px" })}
+                >
+                  Inicio
+                </NavLink>
+                <NavLink
+                  to="/vehicles"
+                  onClick={closeMobileNav}
+                  style={({ isActive }) => ({ ...navLinkStyle(isActive), padding: "10px 12px" })}
+                >
+                  Catálogo
+                </NavLink>
+                {isSignedIn && (
+                  <>
+                    <NavLink
+                      to="/my-bids"
+                      onClick={closeMobileNav}
+                      style={({ isActive }) => ({ ...navLinkStyle(isActive), padding: "10px 12px" })}
+                    >
+                      Mis subastas
+                    </NavLink>
+                    <NavLink
+                      to="/my-purchases"
+                      onClick={closeMobileNav}
+                      style={({ isActive }) => ({ ...navLinkStyle(isActive), padding: "10px 12px" })}
+                    >
+                      Mis compras
+                    </NavLink>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
           {isLoaded && isSignedIn ? (
             <>
               {role === "admin" && (

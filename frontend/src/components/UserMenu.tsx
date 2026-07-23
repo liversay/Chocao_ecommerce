@@ -70,15 +70,8 @@ export default function UserMenu() {
 
         {open && (
           <div
-            className="card card-elevated"
-            style={{
-              position: "absolute",
-              top: "calc(100% + 8px)",
-              right: 0,
-              minWidth: 240,
-              padding: "var(--sp-3)",
-              zIndex: 200,
-            }}
+            className="card card-elevated dropdown-panel user-menu-panel"
+            style={{ padding: "var(--sp-3)" }}
           >
             <div style={{ padding: "8px 12px", borderBottom: "1px solid var(--border)", marginBottom: 8 }}>
               <p style={{ fontSize: "var(--t-sm)", fontWeight: 700, color: "var(--text)" }}>{name}</p>
