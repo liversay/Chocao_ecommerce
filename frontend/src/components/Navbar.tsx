@@ -18,6 +18,21 @@ const navLinkStyle = (active: boolean): React.CSSProperties => ({
   transition: "color var(--dur), border-color var(--dur)",
 });
 
+type NavLinkItem = {
+  to: string;
+  label: string;
+  end?: boolean;
+  /** true = solo visible cuando isSignedIn */
+  protected?: boolean;
+};
+
+const NAV_LINKS: NavLinkItem[] = [
+  { to: "/", label: "Inicio", end: true },
+  { to: "/vehicles", label: "Catálogo" },
+  { to: "/my-bids", label: "Mis subastas", protected: true },
+  { to: "/my-purchases", label: "Mis compras", protected: true },
+];
+
 export default function Navbar() {
   const { isSignedIn, isLoaded } = useAuth();
   const api = useApi();
@@ -97,27 +112,21 @@ export default function Navbar() {
             gap: "var(--sp-5)",
           }}
         >
-          <NavLink to="/" end style={({ isActive }) => navLinkStyle(isActive)}>
-            Inicio
-          </NavLink>
-          <NavLink to="/vehicles" style={({ isActive }) => navLinkStyle(isActive)}>
-            Catálogo
-          </NavLink>
-          {isSignedIn && (
-            <>
-              <NavLink to="/my-bids" style={({ isActive }) => navLinkStyle(isActive)}>
-                Mis subastas
-              </NavLink>
-              <NavLink to="/my-purchases" style={({ isActive }) => navLinkStyle(isActive)}>
-                Mis compras
-              </NavLink>
-            </>
-          )}
+          {NAV_LINKS.filter((link) => !link.protected || isSignedIn).map((link) => (
+            <NavLink
+              key={link.to}
+              to={link.to}
+              end={link.end}
+              style={({ isActive }) => navLinkStyle(isActive)}
+            >
+              {link.label}
+            </NavLink>
+          ))}
         </div>
 
         {/* Right actions */}
         <div style={{ display: "flex", alignItems: "center", gap: "var(--sp-3)" }}>
-          <div ref={mobileNavRef} style={{ position: "relative" }}>
+          <div ref={mobileNavRef} className="navbar-hamburger-wrap" style={{ position: "relative" }}>
             <button
               className="navbar-hamburger-btn"
               onClick={() => setMobileNavOpen((o) => !o)}
@@ -153,39 +162,17 @@ export default function Navbar() {
                   gap: "var(--sp-1)",
                 }}
               >
-                <NavLink
-                  to="/"
-                  end
-                  onClick={closeMobileNav}
-                  style={({ isActive }) => ({ ...navLinkStyle(isActive), padding: "10px 12px" })}
-                >
-                  Inicio
-                </NavLink>
-                <NavLink
-                  to="/vehicles"
-                  onClick={closeMobileNav}
-                  style={({ isActive }) => ({ ...navLinkStyle(isActive), padding: "10px 12px" })}
-                >
-                  Catálogo
-                </NavLink>
-                {isSignedIn && (
-                  <>
-                    <NavLink
-                      to="/my-bids"
-                      onClick={closeMobileNav}
-                      style={({ isActive }) => ({ ...navLinkStyle(isActive), padding: "10px 12px" })}
-                    >
-                      Mis subastas
-                    </NavLink>
-                    <NavLink
-                      to="/my-purchases"
-                      onClick={closeMobileNav}
-                      style={({ isActive }) => ({ ...navLinkStyle(isActive), padding: "10px 12px" })}
-                    >
-                      Mis compras
-                    </NavLink>
-                  </>
-                )}
+                {NAV_LINKS.filter((link) => !link.protected || isSignedIn).map((link) => (
+                  <NavLink
+                    key={link.to}
+                    to={link.to}
+                    end={link.end}
+                    onClick={closeMobileNav}
+                    style={({ isActive }) => ({ ...navLinkStyle(isActive), padding: "10px 12px" })}
+                  >
+                    {link.label}
+                  </NavLink>
+                ))}
               </div>
             )}
           </div>
