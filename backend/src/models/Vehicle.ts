@@ -8,6 +8,8 @@ export interface IVehicle {
   color?: string;
   mileage?: number;
   condition: "excellent" | "good" | "fair" | "poor";
+  transmission?: "manual" | "automatic";
+  bodyStyle?: "sedan" | "suv" | "pickup" | "van" | "panel";
   description?: string;
   images: string[];
   basePrice: number;
@@ -32,6 +34,8 @@ const vehicleSchema = new mongoose.Schema<IVehicle>(
     color: { type: String },
     mileage: { type: Number },
     condition: { type: String, enum: ["excellent", "good", "fair", "poor"], default: "good" },
+    transmission: { type: String, enum: ["manual", "automatic"] },
+    bodyStyle: { type: String, enum: ["sedan", "suv", "pickup", "van", "panel"] },
     description: { type: String },
     images: [{ type: String }],
     basePrice: { type: Number, required: true },
