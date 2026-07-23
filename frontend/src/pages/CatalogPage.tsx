@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
+import { Search } from "lucide-react";
 import { useRealtime } from "../context/RealtimeContext";
 import VehicleCard from "../components/VehicleCard";
 import PageHeader from "../components/PageHeader";
@@ -175,7 +176,7 @@ export default function CatalogPage() {
         <LoadingState message="Cargando catálogo..." />
       ) : items.length === 0 ? (
         <EmptyState
-          icon="🔍"
+          icon={<Search size={32} strokeWidth={1.5} color="var(--text-muted)" />}
           title="No hay vehículos disponibles"
           description={
             textFilters.search ? `Sin resultados para "${textFilters.search}"` : "Prueba ajustar los filtros."
