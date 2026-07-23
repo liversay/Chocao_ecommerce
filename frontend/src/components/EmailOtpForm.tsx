@@ -48,7 +48,7 @@ export default function EmailOtpForm({ mode, redirectTo = "/vehicles" }: Props) 
       form_param_format_invalid: "El formato del correo no es válido.",
       form_param_value_invalid: "Uno de los datos ingresados no es válido.",
       session_exists: "Ya tienes una sesión activa.",
-      too_many_requests: "Demasiados intentos. Espera un momento antes de volver a intentar.",
+      signup_rate_limit_exceeded: "Demasiados intentos. Espera un momento antes de volver a intentar.",
       user_locked: "Tu cuenta fue bloqueada temporalmente por demasiados intentos. Intenta más tarde.",
       captcha_invalid: "No pudimos verificar que eres una persona. Actualiza la página e intenta nuevamente.",
       not_allowed_to_sign_up: "Este correo no tiene permitido registrarse.",
