@@ -6,20 +6,36 @@ import PageHeader from "../components/PageHeader";
 import EmptyState from "../components/EmptyState";
 import LoadingState from "../components/LoadingState";
 import Input from "../components/Input";
-import Select from "../components/Select";
 import Button from "../components/Button";
+import CatalogFilters from "../components/CatalogFilters";
+import { EMPTY_INSTANT_FILTERS, EMPTY_RANGE_DRAFT, type InstantFilters, type RangeDraft } from "../types/catalogFilters";
 import type { Vehicle } from "../types";
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 const PAGE_SIZE = 12;
 
-const FILTERS = [
-  { value: "", label: "Todos" },
-  { value: "active", label: "Activos" },
-  { value: "published", label: "Publicados" },
-  { value: "closed", label: "Cerrados" },
-  { value: "awarded", label: "Adjudicados" },
-];
+// Campos de texto/número: comparten un único debounce de 300ms (igual que la
+// búsqueda libre ya tenía) para no disparar una request por tecla.
+interface TextFilters extends RangeDraft {
+  search: string;
+}
+
+const EMPTY_TEXT_FILTERS: TextFilters = { search: "", ...EMPTY_RANGE_DRAFT };
+
+function hasAnyTextFilter(f: TextFilters): boolean {
+  return Object.values(f).some((v) => v.trim() !== "");
+}
+
+function hasAnyFilterActive(text: TextFilters, instant: InstantFilters): boolean {
+  return (
+    hasAnyTextFilter(text) ||
+    instant.status.length > 0 ||
+    instant.transmission.length > 0 ||
+    instant.bodyStyle.length > 0 ||
+    instant.brand.length > 0 ||
+    instant.sort !== EMPTY_INSTANT_FILTERS.sort
+  );
+}
 
 interface CatalogResponse {
   items: Vehicle[];
@@ -32,28 +48,63 @@ export default function CatalogPage() {
   const { subscribe } = useRealtime();
   const [data, setData] = useState<CatalogResponse | null>(null);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState("");
-  const [search, setSearch] = useState("");
+  const [textFilters, setTextFilters] = useState<TextFilters>(EMPTY_TEXT_FILTERS);
+  const [appliedTextFilters, setAppliedTextFilters] = useState<TextFilters>(EMPTY_TEXT_FILTERS);
+  const [instantFilters, setInstantFilters] = useState<InstantFilters>(EMPTY_INSTANT_FILTERS);
   const [page, setPage] = useState(1);
 
-  // Búsqueda y filtros del lado del servidor (paginado e indexado), con
-  // debounce para no disparar una request por tecla.
+  function updateTextFilters(patch: Partial<TextFilters>) {
+    setTextFilters((f) => ({ ...f, ...patch }));
+    setPage(1);
+  }
+
+  function updateInstantFilters(patch: Partial<InstantFilters>) {
+    setInstantFilters((f) => ({ ...f, ...patch }));
+    setPage(1);
+  }
+
+  function clearFilters() {
+    setTextFilters(EMPTY_TEXT_FILTERS);
+    setInstantFilters(EMPTY_INSTANT_FILTERS);
+    setPage(1);
+  }
+
+  // Búsqueda de texto y rangos numéricos comparten el mismo debounce de
+  // 300ms que ya tenía la búsqueda libre, para no disparar una request por
+  // tecla. Checkboxes y el selector de orden se aplican de inmediato.
+  useEffect(() => {
+    const timer = setTimeout(
+      () => setAppliedTextFilters(textFilters),
+      hasAnyTextFilter(textFilters) ? 300 : 0
+    );
+    return () => clearTimeout(timer);
+  }, [textFilters]);
+
+  // Fetch server-side: se dispara ante cualquier cambio de filtro ya
+  // aplicado (debounced o instantáneo) o de página.
   useEffect(() => {
     setLoading(true);
-    const timer = setTimeout(() => {
-      const params = new URLSearchParams();
-      if (filter) params.set("status", filter);
-      if (search.trim()) params.set("q", search.trim());
-      params.set("page", String(page));
-      params.set("limit", String(PAGE_SIZE));
+    const params = new URLSearchParams();
+    if (appliedTextFilters.search.trim()) params.set("q", appliedTextFilters.search.trim());
+    if (appliedTextFilters.minPrice) params.set("minPrice", appliedTextFilters.minPrice);
+    if (appliedTextFilters.maxPrice) params.set("maxPrice", appliedTextFilters.maxPrice);
+    if (appliedTextFilters.minYear) params.set("minYear", appliedTextFilters.minYear);
+    if (appliedTextFilters.maxYear) params.set("maxYear", appliedTextFilters.maxYear);
+    if (appliedTextFilters.minMileage) params.set("minMileage", appliedTextFilters.minMileage);
+    if (appliedTextFilters.maxMileage) params.set("maxMileage", appliedTextFilters.maxMileage);
+    if (instantFilters.status.length > 0) params.set("status", instantFilters.status.join(","));
+    if (instantFilters.transmission.length > 0) params.set("transmission", instantFilters.transmission.join(","));
+    if (instantFilters.bodyStyle.length > 0) params.set("bodyStyle", instantFilters.bodyStyle.join(","));
+    if (instantFilters.brand.length > 0) params.set("brand", instantFilters.brand.join(","));
+    if (instantFilters.sort) params.set("sort", instantFilters.sort);
+    params.set("page", String(page));
+    params.set("limit", String(PAGE_SIZE));
 
-      axios.get(`${BASE_URL}/api/vehicles?${params}`)
-        .then((r) => setData(r.data))
-        .catch(console.error)
-        .finally(() => setLoading(false));
-    }, search ? 300 : 0);
-    return () => clearTimeout(timer);
-  }, [filter, search, page]);
+    axios.get(`${BASE_URL}/api/vehicles?${params}`)
+      .then((r) => setData(r.data))
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, [appliedTextFilters, instantFilters, page]);
 
   // Precio/estado en vivo por tarjeta — sin re-fetch de la página completa.
   // No añade ni quita tarjetas si un vehículo deja de calzar con el filtro
@@ -97,23 +148,28 @@ export default function CatalogPage() {
         subtitle="Vehículos aprehendidos disponibles para subasta pública"
       />
 
-      <div style={{ display: "flex", gap: "var(--sp-4)", marginBottom: "var(--sp-5)" }}>
+      <div style={{ display: "flex", gap: "var(--sp-4)", marginBottom: "var(--sp-4)", alignItems: "flex-end" }}>
         <div style={{ flex: 1 }}>
           <Input
             type="text"
             placeholder="Buscar por marca o modelo..."
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            value={textFilters.search}
+            onChange={(e) => updateTextFilters({ search: e.target.value })}
           />
         </div>
-        <div style={{ width: 200, flexShrink: 0 }}>
-          <Select
-            options={FILTERS}
-            value={filter}
-            onChange={(e) => { setFilter(e.target.value); setPage(1); }}
-          />
-        </div>
+        {hasAnyFilterActive(textFilters, instantFilters) && (
+          <Button variant="ghost" onClick={clearFilters}>
+            Limpiar filtros
+          </Button>
+        )}
       </div>
+
+      <CatalogFilters
+        range={textFilters}
+        onRangeChange={updateTextFilters}
+        instant={instantFilters}
+        onInstantChange={updateInstantFilters}
+      />
 
       {loading ? (
         <LoadingState message="Cargando catálogo..." />
@@ -121,7 +177,9 @@ export default function CatalogPage() {
         <EmptyState
           icon="🔍"
           title="No hay vehículos disponibles"
-          description={search ? `Sin resultados para "${search}"` : "Prueba cambiar el filtro de estado."}
+          description={
+            textFilters.search ? `Sin resultados para "${textFilters.search}"` : "Prueba ajustar los filtros."
+          }
         />
       ) : (
         <>
