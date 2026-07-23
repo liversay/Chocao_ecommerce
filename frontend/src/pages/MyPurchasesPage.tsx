@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { Car } from "lucide-react";
 import { useApi } from "../hooks/useApi";
 import Card from "../components/Card";
 import Button from "../components/Button";
@@ -58,7 +59,7 @@ export default function MyPurchasesPage() {
           <LoadingState />
         ) : purchases.length === 0 ? (
           <EmptyState
-            icon="🚗"
+            icon={<Car size={32} strokeWidth={1.5} color="var(--text-muted)" />}
             title="Aún no has comprado vehículos"
             description="Cuando ganes una subasta y completes el pago, tus vehículos aparecerán aquí."
             action={

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Bell } from "lucide-react";
 import { useApi } from "../hooks/useApi";
 import { useRealtime } from "../context/RealtimeContext";
 import type { AppNotification } from "../types";
@@ -124,10 +125,9 @@ export default function NotificationBell() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          fontSize: "1.1rem",
         }}
       >
-        🔔
+        <Bell size={20} />
         {unread > 0 && (
           <span
             style={{
@@ -153,10 +153,7 @@ export default function NotificationBell() {
       </button>
 
       {open && (
-        <div
-          className="card card-elevated"
-          style={{ position: "absolute", top: "calc(100% + 8px)", right: 0, width: 340, zIndex: 200 }}
-        >
+        <div className="card card-elevated dropdown-panel notification-panel">
           <div
             style={{
               padding: "var(--sp-3) var(--sp-4)",

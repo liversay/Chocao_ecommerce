@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useClerk, useUser } from "@clerk/react";
+import { Gavel, ShoppingBag, Heart, Settings, LogOut } from "lucide-react";
 import Button from "./Button";
 
 export default function UserMenu() {
@@ -69,15 +70,8 @@ export default function UserMenu() {
 
         {open && (
           <div
-            className="card card-elevated"
-            style={{
-              position: "absolute",
-              top: "calc(100% + 8px)",
-              right: 0,
-              minWidth: 240,
-              padding: "var(--sp-3)",
-              zIndex: 200,
-            }}
+            className="card card-elevated dropdown-panel user-menu-panel"
+            style={{ padding: "var(--sp-3)" }}
           >
             <div style={{ padding: "8px 12px", borderBottom: "1px solid var(--border)", marginBottom: 8 }}>
               <p style={{ fontSize: "var(--t-sm)", fontWeight: 700, color: "var(--text)" }}>{name}</p>
@@ -105,7 +99,8 @@ export default function UserMenu() {
               onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "var(--bg-alt)"; }}
               onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}
             >
-              ◈ Mis subastas
+              <Gavel size={18} style={{ flexShrink: 0 }} />
+              <span>Mis subastas</span>
             </button>
             <button
               onClick={() => { setOpen(false); navigate("/my-purchases"); }}
@@ -127,7 +122,8 @@ export default function UserMenu() {
               onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "var(--bg-alt)"; }}
               onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}
             >
-              ★ Mis compras
+              <ShoppingBag size={18} style={{ flexShrink: 0 }} />
+              <span>Mis compras</span>
             </button>
             <button
               onClick={() => { setOpen(false); navigate("/watchlist"); }}
@@ -149,7 +145,8 @@ export default function UserMenu() {
               onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "var(--bg-alt)"; }}
               onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}
             >
-              ♡ Mi watchlist
+              <Heart size={18} style={{ flexShrink: 0 }} />
+              <span>Mi watchlist</span>
             </button>
             <button
               onClick={() => { setOpen(false); navigate("/account"); }}
@@ -171,7 +168,8 @@ export default function UserMenu() {
               onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "var(--bg-alt)"; }}
               onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}
             >
-              ⚙ Mi cuenta
+              <Settings size={18} style={{ flexShrink: 0 }} />
+              <span>Mi cuenta</span>
             </button>
             <button
               onClick={() => { setOpen(false); setShowConfirm(true); }}
@@ -193,7 +191,8 @@ export default function UserMenu() {
               onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "var(--danger-soft)"; }}
               onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}
             >
-              ⏻ Cerrar sesión
+              <LogOut size={18} color="currentColor" style={{ flexShrink: 0 }} />
+              <span>Cerrar sesión</span>
             </button>
           </div>
         )}
@@ -232,10 +231,8 @@ export default function UserMenu() {
               background: "var(--danger-soft)",
               color: "var(--danger)",
               display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: "1.6rem",
-              fontWeight: 700,
             }}>
-              ⏻
+              <LogOut size={28} />
             </div>
             <h3 style={{ fontSize: "var(--t-lg)", color: "var(--text)", marginBottom: "var(--sp-2)" }}>
               ¿Cerrar sesión?
