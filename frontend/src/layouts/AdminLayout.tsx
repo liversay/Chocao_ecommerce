@@ -11,6 +11,7 @@ import {
   Receipt,
   ChartColumn,
   ScrollText,
+  UserCheck,
 } from "lucide-react";
 import Button from "../components/Button";
 import Card from "../components/Card";
@@ -25,6 +26,7 @@ const navGroups = [
       { to: "/admin/bids", label: "Pujas", icon: Gavel, end: false },
       { to: "/admin/users", label: "Usuarios", icon: Users, end: false },
       { to: "/admin/orders", label: "Órdenes", icon: Receipt, end: false },
+      { to: "/admin/acreditaciones", label: "Acreditaciones", icon: UserCheck, end: false },
     ],
   },
   {

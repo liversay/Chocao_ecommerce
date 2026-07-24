@@ -35,6 +35,7 @@ import AdminReports from "./pages/admin/AdminReports";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminOrders from "./pages/admin/AdminOrders";
 import AdminAudit from "./pages/admin/AdminAudit";
+import AdminAcreditaciones from "./pages/admin/AdminAcreditaciones";
 
 function SyncUser() {
   const { isSignedIn, isLoaded } = useAuth();
@@ -162,6 +163,7 @@ export default function App() {
           <Route path="reports" element={<AdminReports />} />
           <Route path="users" element={<AdminUsers />} />
           <Route path="orders" element={<AdminOrders />} />
+          <Route path="acreditaciones" element={<AdminAcreditaciones />} />
           <Route path="audit" element={<AdminAudit />} />
         </Route>
       </Routes>
