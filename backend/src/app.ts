@@ -18,6 +18,7 @@ import paymentsRouter from "./routes/payments";
 import dashboardRouter from "./routes/dashboard";
 import notificationsRouter from "./routes/notifications";
 import watchlistRouter from "./routes/watchlist";
+import acreditacionRouter from "./routes/acreditacion";
 import type { AppEnv } from "./types";
 
 // CORS estricto: solo los orígenes de la lista blanca (ALLOWED_ORIGINS, CSV).
@@ -70,6 +71,7 @@ export function createApp() {
   app.route("/api/audit", auditRouter);
   app.route("/api/notifications", notificationsRouter);
   app.route("/api/watchlist", watchlistRouter);
+  app.route("/api/acreditacion", acreditacionRouter);
   app.route("/api/events", eventsRouter);
 
   // Servidor MCP (Streamable HTTP) + Authorization Server OAuth 2.1
