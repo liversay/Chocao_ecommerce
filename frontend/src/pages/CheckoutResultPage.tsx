@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useSearchParams, Link, useLocation } from "react-router-dom";
+import { useSearchParams, Link, useLocation } from "react-router";
 import { useApi } from "../hooks/useApi";
 import Card from "../components/Card";
 import Button from "../components/Button";

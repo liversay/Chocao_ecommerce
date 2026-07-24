@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useClerk } from "@clerk/react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import Button from "./Button";
 import Input from "./Input";
 

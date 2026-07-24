@@ -1,5 +1,5 @@
 import { useAuth } from "@clerk/react";
-import { Navigate } from "react-router-dom";
+import { Navigate } from "react-router";
 import { useEffect, useState } from "react";
 import { useApi } from "../hooks/useApi";
 

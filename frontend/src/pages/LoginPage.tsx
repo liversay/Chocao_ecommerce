@@ -1,6 +1,6 @@
 import { SignIn, useAuth } from "@clerk/react";
 import { useEffect, useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link } from "react-router";
 import EmailOtpForm from "../components/EmailOtpForm";
 import AuthMethodTabs from "../components/AuthMethodTabs";
 import Logo from "../components/Logo";
