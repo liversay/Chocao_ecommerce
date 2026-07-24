@@ -11,9 +11,17 @@ import { CHECKLIST_CLAVES } from "../schemas/entrega";
 
 // Precondiciones de RE-01: pago conciliado y adjudicatario no inhabilitado
 // (baneo) sobrevenidamente. El contrato se genera en este mismo paso (RE-02).
-export async function iniciarEntrega(paymentId: string, depositoId: string, slotId: string): Promise<EntregaDoc> {
+export async function iniciarEntrega(
+  paymentId: string,
+  depositoId: string,
+  slotId: string,
+  caller: UserDoc
+): Promise<EntregaDoc> {
   const payment = await Payment.findById(paymentId);
   if (!payment) throw new NotFoundError("Pago no encontrado");
+  if (payment.userId.toString() !== caller._id.toString() && caller.role !== "admin") {
+    throw new ForbiddenError("No tienes permisos para iniciar la entrega de este pago");
+  }
   if (payment.status !== "paid") throw new ConflictError("La entrega requiere un pago conciliado");
 
   const comprador = await User.findById(payment.userId);

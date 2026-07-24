@@ -24,7 +24,7 @@ const iniciarEntregaSchema = z.object({ paymentId: objectIdSchema, depositoId: o
 
 entrega.post("/", requireAuth, validate("json", iniciarEntregaSchema), async (c) => {
   const { paymentId, depositoId, slotId } = c.req.valid("json");
-  return c.json(await iniciarEntrega(paymentId, depositoId, slotId), 201);
+  return c.json(await iniciarEntrega(paymentId, depositoId, slotId, c.get("user")), 201);
 });
 
 entrega.get("/:id", requireAuth, validate("param", entregaIdParamSchema), async (c) => {

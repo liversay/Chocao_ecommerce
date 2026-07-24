@@ -158,6 +158,22 @@ describe("proceso de entrega (RE-01/RE-04/RE-06/RE-07/RE-08)", () => {
     expect(acta.status).toBe(409);
   });
 
+  test("rechaza iniciar la entrega si el llamante no es el dueño del pago", async () => {
+    const { payment, deposito, slotId } = await prepararEscenario("paid");
+    const otroUsuario = await createUser();
+
+    const crear = await iniciarEntrega(otroUsuario, payment._id.toString(), deposito._id.toString(), slotId);
+    expect(crear.status).toBe(403);
+  });
+
+  test("un admin sí puede iniciar la entrega de un pago ajeno", async () => {
+    const { payment, deposito, slotId } = await prepararEscenario("paid");
+    const admin = await createUser({ role: "admin" });
+
+    const crear = await iniciarEntrega(admin, payment._id.toString(), deposito._id.toString(), slotId);
+    expect(crear.status).toBe(201);
+  });
+
   test("rechaza iniciar la entrega si el pago no está conciliado (RE-01)", async () => {
     const { comprador, payment, deposito, slotId } = await prepararEscenario("pending");
 
