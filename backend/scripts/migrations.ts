@@ -59,4 +59,17 @@ export const migrations: Migration[] = [
         .createIndex({ userId: 1, vehicleId: 1 }, { unique: true });
     },
   },
+  {
+    version: 4,
+    name: "acreditacion-proponentes",
+    up: async (connection) => {
+      const db = connection.db!;
+      // RI-03: un documento = un sujeto, y un sujeto = un proponente. Unicidad
+      // garantizada a nivel de base de datos, no solo por el schema.
+      await db.collection("proponentes").createIndex({ userId: 1 }, { unique: true });
+      await db
+        .collection("proponentes")
+        .createIndex({ "documento.canonico": 1 }, { unique: true });
+    },
+  },
 ];
