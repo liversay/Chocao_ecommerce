@@ -35,10 +35,10 @@ interface EntregaJSON {
 // Prepara todo el andamiaje previo a la entrega: comprador con pago
 // conciliado, adjudicación registrada, vehículo con VIN y un depósito con un
 // slot disponible. `paymentStatus` permite ejercitar el caso RE-01.
-async function prepararEscenario(paymentStatus: "paid" | "pending" = "paid") {
+async function prepararEscenario(paymentStatus: "paid" | "pending" = "paid", vin: string = VIN_VEHICULO) {
   const comprador = await createUser();
   const custodio = await createUser({ role: "custodio" });
-  const vehicle = await createVehicle({ vin: VIN_VEHICULO });
+  const vehicle = await createVehicle({ vin });
   const bid = await createBid(vehicle, comprador, { amount: vehicle.currentPrice + 500, status: "winner" });
 
   const adjudicacion = await Adjudicacion.create({
@@ -224,5 +224,57 @@ describe("proceso de entrega (RE-01/RE-04/RE-06/RE-07/RE-08)", () => {
       body: JSON.stringify({ items: [{ item: "llaves", cantidad: 1, faltante: true }] }),
     });
     expect(inventarioDespues.status).toBe(409);
+  });
+});
+
+describe("GET /api/entrega (bandeja de trabajo custodio/admin)", () => {
+  test("custodio y admin pueden listar; un customer recibe 403", async () => {
+    const { comprador, custodio, payment, deposito, slotId } = await prepararEscenario("paid");
+    await iniciarEntrega(comprador, payment._id.toString(), deposito._id.toString(), slotId);
+
+    const resCustodio = await app.request("/api/entrega", { headers: authHeader(custodio) });
+    expect(resCustodio.status).toBe(200);
+    const bodyCustodio = (await resCustodio.json()) as { items: EntregaJSON[]; total: number };
+    expect(bodyCustodio.total).toBeGreaterThanOrEqual(1);
+
+    const admin = await createUser({ role: "admin" });
+    const resAdmin = await app.request("/api/entrega", { headers: authHeader(admin) });
+    expect(resAdmin.status).toBe(200);
+
+    const resComprador = await app.request("/api/entrega", { headers: authHeader(comprador) });
+    expect(resComprador.status).toBe(403);
+  });
+
+  test("filtra por estado=BLOQUEADA para la bandeja de entregas bloqueadas del admin", async () => {
+    const escenario1 = await prepararEscenario("paid");
+    const crear1 = await iniciarEntrega(
+      escenario1.comprador,
+      escenario1.payment._id.toString(),
+      escenario1.deposito._id.toString(),
+      escenario1.slotId
+    );
+    const creada1 = (await crear1.json()) as EntregaJSON;
+    await completarChecklist(escenario1.custodio, creada1._id);
+    await app.request(`/api/entrega/${creada1._id}/vin`, {
+      method: "POST",
+      headers: authHeader(escenario1.custodio),
+      body: JSON.stringify({ vin: VIN_DIFERENTE }),
+    });
+
+    const escenario2 = await prepararEscenario("paid", "3HGCM82633A004354");
+    await iniciarEntrega(
+      escenario2.comprador,
+      escenario2.payment._id.toString(),
+      escenario2.deposito._id.toString(),
+      escenario2.slotId
+    );
+
+    const admin = await createUser({ role: "admin" });
+    const res = await app.request("/api/entrega?estado=BLOQUEADA", { headers: authHeader(admin) });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { items: EntregaJSON[]; total: number };
+    expect(body.items.every((e) => e.estado === "BLOQUEADA")).toBe(true);
+    expect(body.items.some((e) => e._id === creada1._id)).toBe(true);
+    expect(body.items.some((e) => (e as { motivoBloqueo?: string }).motivoBloqueo)).toBe(true);
   });
 });

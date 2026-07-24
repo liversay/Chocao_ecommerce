@@ -6,6 +6,7 @@ import { addBusinessDays } from "../lib/calendario";
 import { AuditLog } from "../models/AuditLog";
 import { Adjudicacion } from "../models/Adjudicacion";
 import { Bid } from "../models/Bid";
+import { Deposito } from "../models/Deposito";
 import { Payment } from "../models/Payment";
 import { Vehicle } from "../models/Vehicle";
 import { setupTestDB } from "./db";
@@ -252,5 +253,75 @@ describe("GET /api/bids/my/purchases", () => {
     expect(body[0]!.payment).toBeDefined();
     expect(body[0]!.payment!.id).toBe(payment._id.toString());
     expect(body[0]!.payment!.status).toBe("paid");
+  });
+
+  test("entrega es null cuando aún no se agendó cita (habilita el botón 'agendar cita' del frontend)", async () => {
+    const buyer = await createUser();
+    const vehicle = await createVehicle();
+    const bid = await createBid(vehicle, buyer, { amount: 12_000, status: "winner" });
+
+    const checkout = await app.request("/api/payments/create-checkout-session", {
+      method: "POST",
+      headers: authHeader(buyer),
+      body: JSON.stringify({ bidId: bid._id.toString() }),
+    });
+    expect(checkout.status).toBe(200);
+    const payment = (await Payment.findOne({ bidId: bid._id }))!;
+    markSessionPaid(payment.stripeSessionId!);
+    await app.request(`/api/payments/success?session_id=${payment.stripeSessionId}`, {
+      headers: authHeader(buyer),
+    });
+
+    const res = await app.request("/api/bids/my/purchases", { headers: authHeader(buyer) });
+    const body = (await res.json()) as { entrega: { id: string; estado: string } | null }[];
+    expect(body).toHaveLength(1);
+    expect(body[0]!.entrega).toBeNull();
+  });
+
+  test("entrega trae {id, estado} una vez agendada la cita (join por paymentId)", async () => {
+    const buyer = await createUser();
+    const vehicle = await createVehicle();
+    const bid = await createBid(vehicle, buyer, { amount: 12_000, status: "winner" });
+
+    const checkout = await app.request("/api/payments/create-checkout-session", {
+      method: "POST",
+      headers: authHeader(buyer),
+      body: JSON.stringify({ bidId: bid._id.toString() }),
+    });
+    expect(checkout.status).toBe(200);
+    const payment = (await Payment.findOne({ bidId: bid._id }))!;
+    markSessionPaid(payment.stripeSessionId!);
+    await app.request(`/api/payments/success?session_id=${payment.stripeSessionId}`, {
+      headers: authHeader(buyer),
+    });
+
+    await Adjudicacion.create({
+      vehicleId: vehicle._id,
+      ganadorBidId: bid._id,
+      fechaActo: new Date(),
+      fechaLimitePago: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+      estado: "PAGADA",
+    });
+    const deposito = await Deposito.create({
+      nombre: "Depósito central",
+      direccion: "Zona 1",
+      slots: [{ inicio: new Date(), fin: new Date(Date.now() + 3600_000), capacidad: 2, ocupados: 0 }],
+    });
+    const slotId = (deposito.slots[0] as unknown as { _id: { toString(): string } })._id.toString();
+
+    const iniciar = await app.request("/api/entrega", {
+      method: "POST",
+      headers: authHeader(buyer),
+      body: JSON.stringify({ paymentId: payment._id.toString(), depositoId: deposito._id.toString(), slotId }),
+    });
+    expect(iniciar.status).toBe(201);
+    const entregaCreada = (await iniciar.json()) as { _id: string; estado: string };
+
+    const res = await app.request("/api/bids/my/purchases", { headers: authHeader(buyer) });
+    const body = (await res.json()) as { entrega: { id: string; estado: string } | null }[];
+    expect(body).toHaveLength(1);
+    expect(body[0]!.entrega).not.toBeNull();
+    expect(body[0]!.entrega!.id).toBe(entregaCreada._id);
+    expect(body[0]!.entrega!.estado).toBe(entregaCreada.estado);
   });
 });

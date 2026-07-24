@@ -3,6 +3,7 @@ import { ConflictError, NotFoundError, ValidationError } from "../lib/errors";
 import { metrics } from "../lib/metrics";
 import { Adjudicacion } from "../models/Adjudicacion";
 import { Bid } from "../models/Bid";
+import { Entrega } from "../models/Entrega";
 import { Payment } from "../models/Payment";
 import type { UserDoc } from "../models/User";
 import { Vehicle } from "../models/Vehicle";
@@ -221,7 +222,10 @@ export async function getMyBids(user: UserDoc) {
 }
 
 // Compras (bids pagados) del usuario dueño del token, con referencia del
-// pago — nunca datos de otros compradores.
+// pago — nunca datos de otros compradores. También trae `entrega: {id,
+// estado} | null` (join por paymentId, mismo patrón Map que el join de
+// payment) — MyPurchasesPage lo usa para mostrar el tracker de entrega y
+// decidir si ofrece "agendar cita" (solo cuando entrega es null).
 export async function getMyPurchases(user: UserDoc) {
   const bids = await Bid.find({ userId: user._id, status: "paid" })
     .populate("vehicleId")
@@ -229,6 +233,10 @@ export async function getMyPurchases(user: UserDoc) {
 
   const payments = await Payment.find({ bidId: { $in: bids.map((b) => b._id) } });
   const paymentByBid = new Map(payments.map((p) => [p.bidId.toString(), p]));
+
+  const paymentIds = payments.map((p) => p._id);
+  const entregas = paymentIds.length ? await Entrega.find({ paymentId: { $in: paymentIds } }) : [];
+  const entregaByPayment = new Map(entregas.map((e) => [e.paymentId.toString(), e]));
 
   return bids.map((b) => {
     const vehicle = b.vehicleId as unknown as {
@@ -239,6 +247,7 @@ export async function getMyPurchases(user: UserDoc) {
       year: number;
     } | null;
     const payment = paymentByBid.get(b._id.toString());
+    const entrega = payment ? entregaByPayment.get(payment._id.toString()) : undefined;
     return {
       bidId: b._id.toString(),
       amount: b.amount,
@@ -251,6 +260,7 @@ export async function getMyPurchases(user: UserDoc) {
         year: vehicle.year,
       },
       payment: payment && { id: payment._id.toString(), status: payment.status },
+      entrega: entrega ? { id: entrega._id.toString(), estado: entrega.estado } : null,
     };
   });
 }

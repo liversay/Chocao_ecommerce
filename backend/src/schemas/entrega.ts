@@ -30,3 +30,9 @@ export const inventarioItemSchema = z.object({
 export const registrarInventarioSchema = z.object({ items: z.array(inventarioItemSchema).min(1) });
 
 export const entregaIdParamSchema = z.object({ id: objectIdSchema });
+
+export const listEntregasQuerySchema = z.object({
+  estado: z.enum(["CITA_AGENDADA", "EN_INSPECCION", "ENTREGADA", "BLOQUEADA"]).optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+});

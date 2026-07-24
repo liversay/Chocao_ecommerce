@@ -198,6 +198,30 @@ export async function generarActa(entregaId: string, custodio: UserDoc): Promise
   return entrega;
 }
 
+export interface ListEntregasParams {
+  estado?: string;
+  page?: number;
+  limit?: number;
+}
+
+// Listado para custodio/admin (permiso entrega:read): bandeja de trabajo del
+// custodio (estados no terminales) y bandeja de bloqueadas del admin, mismo
+// patrón de paginación que listAcreditaciones/listPayments.
+export async function listEntregas({ estado, page = 1, limit = 20 }: ListEntregasParams) {
+  const filter: Record<string, unknown> = {};
+  if (estado) filter.estado = estado;
+  const [items, total] = await Promise.all([
+    Entrega.find(filter)
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .populate("vehicleId")
+      .populate("compradorId", "name email"),
+    Entrega.countDocuments(filter),
+  ]);
+  return { items, total, page, pages: Math.max(1, Math.ceil(total / limit)) };
+}
+
 export async function getEntrega(entregaId: string, user: UserDoc): Promise<EntregaDoc> {
   const entrega = await Entrega.findById(entregaId);
   if (!entrega) throw new NotFoundError("Entrega no encontrada");
