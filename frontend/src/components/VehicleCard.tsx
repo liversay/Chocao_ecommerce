@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import { useAuth } from "@clerk/react";
 import Card from "./Card";
 import StatusBadge from "./StatusBadge";
