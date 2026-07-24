@@ -233,6 +233,13 @@ h1, h2, h3, h4 {
 .badge-cancelled { color: var(--text-soft);   background: var(--bg-alt);       border-color: var(--border); }
 .badge-refunded  { color: var(--warning);     background: var(--warning-soft); }
 
+/* Estados de Adjudicacion (plazo legal de pago / incumplimiento / RP-05) */
+.badge-ADJUDICADA_PENDIENTE_PAGO   { color: var(--warning); background: var(--warning-soft); }
+.badge-PAGADA                      { color: var(--success); background: var(--success-soft); }
+.badge-INCUMPLIDA                  { color: var(--danger);  background: var(--danger-soft); }
+.badge-OFERTA_A_SEGUNDO            { color: var(--accent);  background: var(--accent-soft); }
+.badge-DESIERTO_POR_INCUMPLIMIENTO { color: var(--text-soft); background: var(--bg-alt); border-color: var(--border); }
+
 /* admin: chip rectangular compacto */
 .admin-theme .badge { border-radius: 4px; padding: 2px 8px; font-size: 10.5px; }
 

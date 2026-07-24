@@ -15,6 +15,11 @@ const labels: Record<string, string> = {
   paid: "Pagado",
   cancelled: "Cancelado",
   refunded: "Reembolsado",
+  ADJUDICADA_PENDIENTE_PAGO: "Pendiente de pago",
+  PAGADA: "Pagada",
+  INCUMPLIDA: "Incumplida",
+  OFERTA_A_SEGUNDO: "Oferta al segundo postor",
+  DESIERTO_POR_INCUMPLIMIENTO: "Desierto por incumplimiento",
 };
 
 export default function StatusBadge({ status, label }: Props) {

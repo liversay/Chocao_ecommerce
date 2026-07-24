@@ -12,6 +12,16 @@ import LoadingState from "../../components/LoadingState";
 import DateRangePicker from "../../components/admin/DateRangePicker";
 import ExportCsvButton from "../../components/admin/ExportCsvButton";
 
+interface AdminPaymentAdjudicacion {
+  estado:
+    | "ADJUDICADA_PENDIENTE_PAGO"
+    | "PAGADA"
+    | "INCUMPLIDA"
+    | "OFERTA_A_SEGUNDO"
+    | "DESIERTO_POR_INCUMPLIMIENTO";
+  fechaLimitePago: string;
+}
+
 interface AdminPayment {
   _id: string;
   amount: number;
@@ -19,6 +29,7 @@ interface AdminPayment {
   createdAt: string;
   userId: { name: string; email: string } | null;
   vehicleId: { title: string; brand: string; model: string } | null;
+  adjudicacion: AdminPaymentAdjudicacion | null;
 }
 
 const STATUS_OPTIONS = [
@@ -118,6 +129,27 @@ export default function AdminOrders() {
                 <span className="mono" style={{ fontWeight: 700 }}>${p.amount.toLocaleString()}</span>
               ) },
               { header: "Estado", accessor: (p) => <StatusBadge status={p.status} /> },
+              {
+                header: "Adjudicación",
+                accessor: (p) =>
+                  p.adjudicacion ? (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "flex-start" }}>
+                      <StatusBadge status={p.adjudicacion.estado} />
+                      {p.adjudicacion.estado === "ADJUDICADA_PENDIENTE_PAGO" && (
+                        <span style={{ color: "var(--text-muted)", fontSize: "10.5px" }}>
+                          Vence{" "}
+                          {new Date(p.adjudicacion.fechaLimitePago).toLocaleDateString("es-PA", {
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric",
+                          })}
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <span style={{ color: "var(--text-soft)", fontSize: "var(--t-xs)" }}>—</span>
+                  ),
+              },
               { header: "Fecha", accessor: (p) => (
                 <span style={{ color: "var(--text-muted)", fontSize: "var(--t-xs)" }}>
                   {new Date(p.createdAt).toLocaleDateString("es-PA", { day: "numeric", month: "short", year: "numeric" })}

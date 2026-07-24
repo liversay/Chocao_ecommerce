@@ -38,6 +38,23 @@ export interface Vehicle {
   createdAt: string;
 }
 
+export type EstadoAdjudicacion =
+  | "ADJUDICADA_PENDIENTE_PAGO"
+  | "PAGADA"
+  | "INCUMPLIDA"
+  | "OFERTA_A_SEGUNDO"
+  | "DESIERTO_POR_INCUMPLIMIENTO";
+
+export interface AdjudicacionInfo {
+  id: string;
+  estado: EstadoAdjudicacion;
+  fechaLimitePago: string;
+  // true solo para el bid que es el segundoBidId de la Adjudicacion — el
+  // ganador original (ahora inhabilitado) comparte la misma Adjudicacion
+  // por vehicleId pero nunca puede aceptar la oferta.
+  esSegundoPostor: boolean;
+}
+
 export interface Bid {
   _id: string;
   vehicleId: Vehicle | string;
@@ -46,6 +63,7 @@ export interface Bid {
   status: "active" | "outbid" | "winner" | "paid";
   createdAt: string;
   payment?: { id: string; status: string };
+  adjudicacion?: AdjudicacionInfo | null;
 }
 
 export interface Payment {
