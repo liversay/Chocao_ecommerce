@@ -17,6 +17,9 @@ export const PERMISSIONS = [
   "users:read", // listar usuarios (backoffice)
   "audit:read", // consultar el registro de auditoría
   "mcp:manage", // revocar clientes MCP comprometidos (HU-60)
+  "entrega:read", // ver el estado de una entrega (custodio, comprador dueño, admin)
+  "entrega:execute", // ejecutar el checklist de inspección y generar el acta (custodio)
+  "acreditacion:review", // aprobar/rechazar la acreditación de un proponente (admin)
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -28,6 +31,17 @@ export type Role = IUser["role"];
 const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
   customer: ["catalog:read", "bids:read", "bids:write", "payments:write"],
   admin: [...PERMISSIONS],
+  auditor: [
+    "catalog:read",
+    "bids:read",
+    "payments:read",
+    "dashboard:read",
+    "report:read",
+    "audit:read",
+    "entrega:read",
+    "users:read",
+  ],
+  custodio: ["catalog:read", "entrega:read", "entrega:execute"],
 };
 
 export function permissionsForRole(role: Role): readonly Permission[] {

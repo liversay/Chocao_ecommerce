@@ -11,7 +11,7 @@ export interface IUser {
   clerkId: string;
   name: string;
   email: string;
-  role: "customer" | "admin";
+  role: "customer" | "admin" | "auditor" | "custodio";
   phone?: string;
   banned: boolean;
   notificationPrefs: INotificationPrefs;
@@ -35,7 +35,7 @@ const userSchema = new mongoose.Schema<IUser>(
     clerkId: { type: String, required: true, unique: true },
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true },
-    role: { type: String, enum: ["customer", "admin"], default: "customer" },
+    role: { type: String, enum: ["customer", "admin", "auditor", "custodio"], default: "customer" },
     phone: { type: String },
     banned: { type: Boolean, default: false },
     notificationPrefs: { type: notificationPrefsSchema, default: () => ({}) },
