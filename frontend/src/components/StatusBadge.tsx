@@ -20,6 +20,10 @@ const labels: Record<string, string> = {
   INCUMPLIDA: "Incumplida",
   OFERTA_A_SEGUNDO: "Oferta al segundo postor",
   DESIERTO_POR_INCUMPLIMIENTO: "Desierto por incumplimiento",
+  CITA_AGENDADA: "Cita agendada",
+  EN_INSPECCION: "En inspección",
+  ENTREGADA: "Entregada",
+  BLOQUEADA: "Bloqueada",
 };
 
 export default function StatusBadge({ status, label }: Props) {

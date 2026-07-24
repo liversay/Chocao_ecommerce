@@ -10,7 +10,7 @@ export interface User {
   clerkId: string;
   name: string;
   email: string;
-  role: "customer" | "admin";
+  role: "customer" | "admin" | "auditor" | "custodio";
   phone?: string;
   banned: boolean;
   notificationPrefs: NotificationPrefs;
@@ -55,6 +55,13 @@ export interface AdjudicacionInfo {
   esSegundoPostor: boolean;
 }
 
+export type EstadoEntrega = "CITA_AGENDADA" | "EN_INSPECCION" | "ENTREGADA" | "BLOQUEADA";
+
+export interface EntregaInfo {
+  id: string;
+  estado: EstadoEntrega;
+}
+
 export interface Bid {
   _id: string;
   vehicleId: Vehicle | string;
@@ -64,6 +71,56 @@ export interface Bid {
   createdAt: string;
   payment?: { id: string; status: string };
   adjudicacion?: AdjudicacionInfo | null;
+  entrega?: EntregaInfo | null;
+}
+
+export interface ChecklistItem {
+  clave: string;
+  fotoUrl: string;
+  capturadoEn: string;
+  geolocalizacion?: { lat: number; lng: number };
+}
+
+export interface InventarioItem {
+  item: string;
+  cantidad: number;
+  faltante: boolean;
+}
+
+export interface Entrega {
+  _id: string;
+  adjudicacionId: string;
+  vehicleId: Vehicle | string;
+  paymentId: string;
+  compradorId: User | string;
+  depositoId: string;
+  citaProgramadaEn: string;
+  reprogramaciones: number;
+  custodioId?: string;
+  estado: EstadoEntrega;
+  checklist: ChecklistItem[];
+  inventario: InventarioItem[];
+  vinCapturado?: string;
+  actaHash?: string;
+  actaGeneradaEn?: string;
+  motivoBloqueo?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DepositoSlot {
+  _id: string;
+  inicio: string;
+  fin: string;
+  capacidad: number;
+  ocupados: number;
+}
+
+export interface Deposito {
+  _id: string;
+  nombre: string;
+  direccion: string;
+  slots: DepositoSlot[];
 }
 
 export interface Payment {

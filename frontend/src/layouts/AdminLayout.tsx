@@ -12,6 +12,7 @@ import {
   ChartColumn,
   ScrollText,
   UserCheck,
+  AlertTriangle,
 } from "lucide-react";
 import Button from "../components/Button";
 import Card from "../components/Card";
@@ -27,6 +28,7 @@ const navGroups = [
       { to: "/admin/users", label: "Usuarios", icon: Users, end: false },
       { to: "/admin/orders", label: "Órdenes", icon: Receipt, end: false },
       { to: "/admin/acreditaciones", label: "Acreditaciones", icon: UserCheck, end: false },
+      { to: "/admin/entregas-bloqueadas", label: "Entregas bloqueadas", icon: AlertTriangle, end: false },
     ],
   },
   {
