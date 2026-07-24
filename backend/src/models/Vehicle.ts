@@ -11,6 +11,7 @@ export interface IVehicle {
   transmission?: "manual" | "automatic";
   bodyStyle?: "sedan" | "suv" | "pickup" | "van" | "panel";
   description?: string;
+  vin?: string;
   images: string[];
   basePrice: number;
   currentPrice: number;
@@ -37,6 +38,7 @@ const vehicleSchema = new mongoose.Schema<IVehicle>(
     transmission: { type: String, enum: ["manual", "automatic"] },
     bodyStyle: { type: String, enum: ["sedan", "suv", "pickup", "van", "panel"] },
     description: { type: String },
+    vin: { type: String, index: { unique: true, sparse: true } },
     images: [{ type: String }],
     basePrice: { type: Number, required: true },
     currentPrice: { type: Number, required: true },
