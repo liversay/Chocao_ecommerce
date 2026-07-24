@@ -59,4 +59,42 @@ export const migrations: Migration[] = [
         .createIndex({ userId: 1, vehicleId: 1 }, { unique: true });
     },
   },
+  {
+    version: 4,
+    name: "acreditacion-proponentes",
+    up: async (connection) => {
+      const db = connection.db!;
+      // RI-03: un documento = un sujeto, y un sujeto = un proponente. Unicidad
+      // garantizada a nivel de base de datos, no solo por el schema.
+      await db.collection("proponentes").createIndex({ userId: 1 }, { unique: true });
+      await db
+        .collection("proponentes")
+        .createIndex({ "documento.canonico": 1 }, { unique: true });
+    },
+  },
+  {
+    version: 5,
+    name: "adjudicacion-y-referencia-pago",
+    up: async (connection) => {
+      const db = connection.db!;
+      // RP-01: a lo sumo una adjudicación viva por vehículo.
+      await db.collection("adjudicacions").createIndex({ vehicleId: 1 }, { unique: true });
+      // RP-03: la referencia de pago es única por acto de pago.
+      await db
+        .collection("payments")
+        .createIndex({ referenciaPago: 1 }, { unique: true, sparse: true });
+    },
+  },
+  {
+    version: 6,
+    name: "vin-y-entrega-por-adjudicacion",
+    up: async (connection) => {
+      const db = connection.db!;
+      // RB-02: el VIN es el identificador unívoco del bien vehicular.
+      await db.collection("vehicles").createIndex({ vin: 1 }, { unique: true, sparse: true });
+      // A lo sumo una Entrega por adjudicación — respalda el chequeo de
+      // idempotencia de iniciarEntrega a nivel de base de datos.
+      await db.collection("entregas").createIndex({ adjudicacionId: 1 }, { unique: true });
+    },
+  },
 ];

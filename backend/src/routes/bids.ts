@@ -1,11 +1,14 @@
 import { Hono } from "hono";
+import type { Types } from "mongoose";
 import type { AppEnv } from "../types";
 import { requireAuth, requirePermission } from "../middlewares/auth";
 import { rateLimit } from "../middlewares/rateLimit";
 import { idParamSchema, validate } from "../schemas/common";
 import { placeBidSchema } from "../schemas/bids";
 import { placeBid } from "../services/bids";
+import { Adjudicacion } from "../models/Adjudicacion";
 import { Bid } from "../models/Bid";
+import { Entrega } from "../models/Entrega";
 import { Payment } from "../models/Payment";
 
 const bids = new Hono<AppEnv>();
@@ -18,7 +21,14 @@ bids.get("/", requirePermission("report:read"), async (c) => {
 
 // Customer: my bids. Las pagadas traen `payment: {id, status}` (igual que
 // /my/purchases) — VehicleDetailPage lo usa para enlazar "Ver recibo" sin
-// depender de qué endpoint trajo la puja.
+// depender de qué endpoint trajo la puja. También trae `adjudicacion: {id,
+// estado, fechaLimitePago, esSegundoPostor} | null` (join por vehicleId,
+// mismo patrón Map que el join de payment) — MyBidsPage lo usa para mostrar
+// el plazo legal de pago y el botón "Aceptar oferta" del segundo postor tras
+// un incumplimiento (RP-05). `esSegundoPostor` distingue, cuando el mismo
+// vehículo aparece en dos bids (el ganador original y el segundo postor,
+// ambos comparten la misma Adjudicacion), cuál de los dos es el que puede
+// aceptar la oferta.
 bids.get("/my", requireAuth, async (c) => {
   const user = c.get("user");
   const list = await Bid.find({ userId: user._id })
@@ -30,16 +40,39 @@ bids.get("/my", requireAuth, async (c) => {
   const payments = paidIds.length ? await Payment.find({ bidId: { $in: paidIds } }).lean() : [];
   const paymentByBid = new Map(payments.map((p) => [p.bidId.toString(), p]));
 
+  const vehicleIds = list
+    .map((b) => (b.vehicleId as unknown as { _id?: Types.ObjectId } | null)?._id)
+    .filter((id): id is Types.ObjectId => Boolean(id));
+  const adjudicaciones = vehicleIds.length
+    ? await Adjudicacion.find({ vehicleId: { $in: vehicleIds } }).lean()
+    : [];
+  const adjudicacionByVehicle = new Map(adjudicaciones.map((a) => [a.vehicleId.toString(), a]));
+
   const withPayment = list.map((bid) => {
     const payment = paymentByBid.get(bid._id.toString());
-    return { ...bid, payment: payment && { id: payment._id.toString(), status: payment.status } };
+    const vehicleId = (bid.vehicleId as unknown as { _id?: Types.ObjectId } | null)?._id;
+    const adjudicacion = vehicleId ? adjudicacionByVehicle.get(String(vehicleId)) : undefined;
+    return {
+      ...bid,
+      payment: payment && { id: payment._id.toString(), status: payment.status },
+      adjudicacion: adjudicacion
+        ? {
+            id: adjudicacion._id.toString(),
+            estado: adjudicacion.estado,
+            fechaLimitePago: adjudicacion.fechaLimitePago,
+            esSegundoPostor: adjudicacion.segundoBidId?.toString() === bid._id.toString(),
+          }
+        : null,
+    };
   });
   return c.json(withPayment);
 });
 
 // Customer: my purchases (paid bids only). Cada fila trae `payment: {id,
 // status}` — el frontend (MyPurchasesPage → botón "Ver recibo") lo usa para
-// enlazar a GET /api/payments/:id/receipt.
+// enlazar a GET /api/payments/:id/receipt. También trae `entrega: {id,
+// estado} | null` (join por paymentId) — MyPurchasesPage lo usa para el
+// tracker de entrega y el flujo "agendar cita" cuando aún no existe.
 bids.get("/my/purchases", requireAuth, async (c) => {
   const user = c.get("user");
   const list = await Bid.find({ userId: user._id, status: "paid" })
@@ -50,9 +83,18 @@ bids.get("/my/purchases", requireAuth, async (c) => {
   const payments = await Payment.find({ bidId: { $in: list.map((b) => b._id) } }).lean();
   const paymentByBid = new Map(payments.map((p) => [p.bidId.toString(), p]));
 
+  const paymentIds = payments.map((p) => p._id);
+  const entregas = paymentIds.length ? await Entrega.find({ paymentId: { $in: paymentIds } }).lean() : [];
+  const entregaByPayment = new Map(entregas.map((e) => [e.paymentId.toString(), e]));
+
   const withPayment = list.map((bid) => {
     const payment = paymentByBid.get(bid._id.toString());
-    return { ...bid, payment: payment && { id: payment._id.toString(), status: payment.status } };
+    const entrega = payment ? entregaByPayment.get(payment._id.toString()) : undefined;
+    return {
+      ...bid,
+      payment: payment && { id: payment._id.toString(), status: payment.status },
+      entrega: entrega ? { id: entrega._id.toString(), estado: entrega.estado } : null,
+    };
   });
   return c.json(withPayment);
 });

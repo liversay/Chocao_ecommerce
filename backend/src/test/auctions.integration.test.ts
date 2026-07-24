@@ -1,10 +1,11 @@
 import "./mocks/clerk";
 import "./mocks/stripe";
 import { describe, expect, test } from "bun:test";
+import { Adjudicacion } from "../models/Adjudicacion";
 import { AuditLog } from "../models/AuditLog";
 import { Bid } from "../models/Bid";
 import { Vehicle } from "../models/Vehicle";
-import { closeExpiredAuctions } from "../services/auctions";
+import { adjudicateVehicle, closeExpiredAuctions } from "../services/auctions";
 import { setupTestDB } from "./db";
 import { createBid, createUser, createVehicle } from "./factories";
 
@@ -63,5 +64,85 @@ describe("cierre automático de subastas (HU-39)", () => {
 
     await closeExpiredAuctions();
     expect((await Bid.findById(pagada._id))!.status).toBe("paid");
+  });
+});
+
+describe("adjudicación con segundo postor y plazo legal de pago (RP-01/RP-02)", () => {
+  test("adjudicateVehicle persiste ganador, segundo postor y fechaLimitePago a 5 días hábiles", async () => {
+    const [ana, bruno, carla] = await Promise.all([createUser(), createUser(), createUser()]);
+    const vehicle = await createVehicle();
+    await createBid(vehicle, ana!, { amount: 100 });
+    await createBid(vehicle, bruno!, { amount: 200 });
+    const alta = await createBid(vehicle, carla!, { amount: 300 });
+
+    const winnerBidId = await adjudicateVehicle(vehicle._id.toString());
+
+    expect(winnerBidId).toBe(alta._id.toString());
+    const adjudicacion = await Adjudicacion.findOne({ vehicleId: vehicle._id });
+    expect(adjudicacion).not.toBeNull();
+    expect(adjudicacion?.ganadorBidId.toString()).toBe(alta._id.toString());
+    expect(adjudicacion?.segundoMonto).toBe(200);
+    expect(adjudicacion?.estado).toBe("ADJUDICADA_PENDIENTE_PAGO");
+    expect(adjudicacion?.fechaLimitePago.getTime()).toBeGreaterThan(adjudicacion!.fechaActo.getTime());
+  });
+
+  test("adjudicateVehicle sin segundo postor deja segundoBidId/segundoMonto sin definir", async () => {
+    const ana = await createUser();
+    const vehicle = await createVehicle();
+    const unica = await createBid(vehicle, ana!, { amount: 500 });
+
+    await adjudicateVehicle(vehicle._id.toString());
+
+    const adjudicacion = await Adjudicacion.findOne({ vehicleId: vehicle._id });
+    expect(adjudicacion?.ganadorBidId.toString()).toBe(unica._id.toString());
+    expect(adjudicacion?.segundoBidId).toBeUndefined();
+    expect(adjudicacion?.segundoMonto).toBeUndefined();
+  });
+
+  test("adjudicateVehicle es un no-op sobre una Adjudicacion ya PAGADA (bid ganador ya paid)", async () => {
+    const ana = await createUser();
+    const vehicle = await createVehicle();
+    const pagada = await createBid(vehicle, ana!, { amount: 400, status: "paid" });
+
+    const fechaActoOriginal = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000);
+    const fechaLimitePagoOriginal = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000);
+    await Adjudicacion.create({
+      vehicleId: vehicle._id,
+      ganadorBidId: pagada._id,
+      fechaActo: fechaActoOriginal,
+      fechaLimitePago: fechaLimitePagoOriginal,
+      estado: "PAGADA",
+    });
+
+    // Simula un admin repitiendo el PATCH de estado (closed/awarded) sobre un
+    // vehículo cuyo ganador ya pagó — no debe reabrir el plazo de pago.
+    const winnerBidId = await adjudicateVehicle(vehicle._id.toString());
+
+    expect(winnerBidId).toBe(pagada._id.toString());
+    expect((await Bid.findById(pagada._id))!.status).toBe("paid");
+
+    const adjudicacion = await Adjudicacion.findOne({ vehicleId: vehicle._id });
+    expect(adjudicacion?.estado).toBe("PAGADA");
+    expect(adjudicacion?.fechaLimitePago.getTime()).toBe(fechaLimitePagoOriginal.getTime());
+    expect(adjudicacion?.fechaActo.getTime()).toBe(fechaActoOriginal.getTime());
+  });
+
+  test("adjudicateVehicle aborta y no adjudica si detecta un empate en el monto más alto (RJ-02)", async () => {
+    const [ana, bruno] = await Promise.all([createUser(), createUser()]);
+    const vehicle = await createVehicle();
+    const empatadaUno = await createBid(vehicle, ana!, { amount: 300 });
+    const empatadaDos = await createBid(vehicle, bruno!, { amount: 300 });
+
+    const winnerBidId = await adjudicateVehicle(vehicle._id.toString());
+
+    expect(winnerBidId).toBeUndefined();
+    const adjudicacion = await Adjudicacion.findOne({ vehicleId: vehicle._id });
+    expect(adjudicacion).toBeNull();
+    // ninguno de los bids empatados cambió de estado — la intervención es manual
+    expect((await Bid.findById(empatadaUno._id))!.status).toBe("active");
+    expect((await Bid.findById(empatadaDos._id))!.status).toBe("active");
+    // y debe quedar auditado como anomalía para intervención manual
+    const entry = await AuditLog.findOne({ action: "adjudicacion.empate_detectado" });
+    expect(entry).not.toBeNull();
   });
 });

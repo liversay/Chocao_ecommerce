@@ -9,6 +9,7 @@ import PublicLayout from "./layouts/PublicLayout";
 import AdminLayout from "./layouts/AdminLayout";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminRoute from "./components/AdminRoute";
+import RoleRoute from "./components/RoleRoute";
 import ErrorBoundary from "./components/ErrorBoundary";
 import NotFoundPage from "./pages/NotFoundPage";
 
@@ -24,6 +25,8 @@ import AccountPage from "./pages/AccountPage";
 import NotificationsPage from "./pages/NotificationsPage";
 import CheckoutResultPage from "./pages/CheckoutResultPage";
 import ReceiptPage from "./pages/ReceiptPage";
+import EntregaDetailPage from "./pages/EntregaDetailPage";
+import CustodioInspeccion from "./pages/CustodioInspeccion";
 import TermsPage from "./pages/TermsPage";
 import PrivacyPage from "./pages/PrivacyPage";
 import ContactPage from "./pages/ContactPage";
@@ -35,6 +38,8 @@ import AdminReports from "./pages/admin/AdminReports";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminOrders from "./pages/admin/AdminOrders";
 import AdminAudit from "./pages/admin/AdminAudit";
+import AdminAcreditaciones from "./pages/admin/AdminAcreditaciones";
+import AdminEntregasBloqueadas from "./pages/admin/AdminEntregasBloqueadas";
 
 function SyncUser() {
   const { isSignedIn, isLoaded } = useAuth();
@@ -122,6 +127,30 @@ export default function App() {
             }
           />
           <Route
+            path="/entrega/:id"
+            element={
+              <ProtectedRoute>
+                <EntregaDetailPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/custodio"
+            element={
+              <RoleRoute roles={["custodio", "admin"]}>
+                <CustodioInspeccion />
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/custodio/entregas/:id"
+            element={
+              <RoleRoute roles={["custodio", "admin"]}>
+                <CustodioInspeccion />
+              </RoleRoute>
+            }
+          />
+          <Route
             path="/checkout/success"
             element={
               <ProtectedRoute>
@@ -162,6 +191,8 @@ export default function App() {
           <Route path="reports" element={<AdminReports />} />
           <Route path="users" element={<AdminUsers />} />
           <Route path="orders" element={<AdminOrders />} />
+          <Route path="acreditaciones" element={<AdminAcreditaciones />} />
+          <Route path="entregas-bloqueadas" element={<AdminEntregasBloqueadas />} />
           <Route path="audit" element={<AdminAudit />} />
         </Route>
       </Routes>

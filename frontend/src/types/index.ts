@@ -10,7 +10,7 @@ export interface User {
   clerkId: string;
   name: string;
   email: string;
-  role: "customer" | "admin";
+  role: "customer" | "admin" | "auditor" | "custodio";
   phone?: string;
   banned: boolean;
   notificationPrefs: NotificationPrefs;
@@ -38,6 +38,30 @@ export interface Vehicle {
   createdAt: string;
 }
 
+export type EstadoAdjudicacion =
+  | "ADJUDICADA_PENDIENTE_PAGO"
+  | "PAGADA"
+  | "INCUMPLIDA"
+  | "OFERTA_A_SEGUNDO"
+  | "DESIERTO_POR_INCUMPLIMIENTO";
+
+export interface AdjudicacionInfo {
+  id: string;
+  estado: EstadoAdjudicacion;
+  fechaLimitePago: string;
+  // true solo para el bid que es el segundoBidId de la Adjudicacion — el
+  // ganador original (ahora inhabilitado) comparte la misma Adjudicacion
+  // por vehicleId pero nunca puede aceptar la oferta.
+  esSegundoPostor: boolean;
+}
+
+export type EstadoEntrega = "CITA_AGENDADA" | "EN_INSPECCION" | "ENTREGADA" | "BLOQUEADA";
+
+export interface EntregaInfo {
+  id: string;
+  estado: EstadoEntrega;
+}
+
 export interface Bid {
   _id: string;
   vehicleId: Vehicle | string;
@@ -46,6 +70,57 @@ export interface Bid {
   status: "active" | "outbid" | "winner" | "paid";
   createdAt: string;
   payment?: { id: string; status: string };
+  adjudicacion?: AdjudicacionInfo | null;
+  entrega?: EntregaInfo | null;
+}
+
+export interface ChecklistItem {
+  clave: string;
+  fotoUrl: string;
+  capturadoEn: string;
+  geolocalizacion?: { lat: number; lng: number };
+}
+
+export interface InventarioItem {
+  item: string;
+  cantidad: number;
+  faltante: boolean;
+}
+
+export interface Entrega {
+  _id: string;
+  adjudicacionId: string;
+  vehicleId: Vehicle | string;
+  paymentId: string;
+  compradorId: User | string;
+  depositoId: string;
+  citaProgramadaEn: string;
+  reprogramaciones: number;
+  custodioId?: string;
+  estado: EstadoEntrega;
+  checklist: ChecklistItem[];
+  inventario: InventarioItem[];
+  vinCapturado?: string;
+  actaHash?: string;
+  actaGeneradaEn?: string;
+  motivoBloqueo?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DepositoSlot {
+  _id: string;
+  inicio: string;
+  fin: string;
+  capacidad: number;
+  ocupados: number;
+}
+
+export interface Deposito {
+  _id: string;
+  nombre: string;
+  direccion: string;
+  slots: DepositoSlot[];
 }
 
 export interface Payment {
@@ -82,6 +157,19 @@ export interface WatchlistItem {
   _id: string;
   vehicleId: Vehicle;
   createdAt: string;
+}
+
+export interface Proponente {
+  _id: string;
+  userId: string;
+  documento: { canonico: string; original: string; categoria: string };
+  estado: "BORRADOR" | "EN_REVISION" | "ACREDITADO" | "RECHAZADO";
+  motivoRechazo?: string;
+  aceptoPliego: boolean;
+  aceptoPliegoEn?: string;
+  verificacion: { estado: "PENDIENTE" | "APROBADO" | "RECHAZADO"; verificadoEn?: string };
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Receipt {

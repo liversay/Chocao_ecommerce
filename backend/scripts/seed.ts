@@ -3,6 +3,11 @@ import "dotenv/config";
 import { User } from "../src/models/User";
 import { Vehicle } from "../src/models/Vehicle";
 import { Bid } from "../src/models/Bid";
+import { Proponente } from "../src/models/Proponente";
+import { Deposito } from "../src/models/Deposito";
+import { Adjudicacion } from "../src/models/Adjudicacion";
+import { Payment } from "../src/models/Payment";
+import { Entrega } from "../src/models/Entrega";
 
 // Foto real de catálogo que coincide con marca/modelo/año/color, vía el CDN
 // público de demo de imagin.studio (customer "img", sin API key, matching
@@ -54,6 +59,62 @@ export async function seed() {
 
   const inDays = (d: number) => new Date(Date.now() + d * 24 * 60 * 60 * 1000);
 
+  // Custodio y auditor de demo: roles habilitados desde el Task 1, sin uso
+  // real hasta las pantallas de entrega/auditoría (Tasks 9-11), pero
+  // necesarios para poder iniciar sesión como esos roles en una demo manual.
+  const [custodio, auditor] = await Promise.all([
+    User.findOneAndUpdate(
+      { clerkId: "seed-custodio" },
+      { clerkId: "seed-custodio", name: "Custodio Demo", email: "custodio@chocao.demo", role: "custodio" },
+      { upsert: true, returnDocument: "after", setDefaultsOnInsert: true }
+    ),
+    User.findOneAndUpdate(
+      { clerkId: "seed-auditor" },
+      { clerkId: "seed-auditor", name: "Auditor Demo", email: "auditor@chocao.demo", role: "auditor" },
+      { upsert: true, returnDocument: "after", setDefaultsOnInsert: true }
+    ),
+  ]);
+
+  // Proponentes ACREDITADOS de demo: sin esto, Ana/Bruno pasan el login pero
+  // el gate de acreditación del Task 5 (estaAcreditado, ver services/bids.ts)
+  // rechaza cualquier puja NUEVA que intenten desde la UI real — las pujas ya
+  // sembradas abajo no pasan por ese gate porque se insertan directo. Estado
+  // ACREDITADO es el único campo que `estaAcreditado` revisa; el resto se
+  // completa de forma consistente con un flujo ya aprobado.
+  const proponenteSpecs = [
+    { user: ana!, documento: "8-100-1001" },
+    { user: bruno!, documento: "8-100-1002" },
+  ] as const;
+  for (const spec of proponenteSpecs) {
+    await Proponente.findOneAndUpdate(
+      { userId: spec.user._id },
+      {
+        $set: {
+          userId: spec.user._id,
+          documento: { canonico: spec.documento, original: spec.documento, categoria: "NACIONAL" },
+          estado: "ACREDITADO",
+          aceptoPliego: true,
+          aceptoPliegoEn: new Date(),
+          verificacion: { estado: "APROBADO", verificadoEn: new Date() },
+        },
+      },
+      { upsert: true, returnDocument: "after", setDefaultsOnInsert: true }
+    );
+  }
+
+  // Depósito de demo con un slot futuro disponible, para poder agendar una
+  // cita de entrega desde la UI sin tener que crear el depósito a mano.
+  const deposito = await Deposito.findOneAndUpdate(
+    { nombre: "Depósito Central Chocao" },
+    {
+      $set: { nombre: "Depósito Central Chocao", direccion: "Vía España, Ciudad de Panamá", custodioIds: [custodio!._id] },
+      $setOnInsert: {
+        slots: [{ inicio: inDays(3), fin: inDays(3.25), capacidad: 4, ocupados: 0 }],
+      },
+    },
+    { upsert: true, returnDocument: "after", setDefaultsOnInsert: true }
+  );
+
   const vehicles = [
     { title: "Toyota Hilux 2021 · Flota MOP", brand: "Toyota", model: "Hilux", year: 2021, condition: "good", basePrice: 18500, status: "active", auctionStartDate: inDays(-2), auctionEndDate: inDays(5), mileage: 74000, color: "Blanco" },
     { title: "Nissan Frontier 2019 · Flota MINSA", brand: "Nissan", model: "Frontier", year: 2019, condition: "fair", basePrice: 12800, status: "active", auctionStartDate: inDays(-1), auctionEndDate: inDays(3), mileage: 112000, color: "Gris" },
@@ -96,6 +157,67 @@ export async function seed() {
       await spec.vehicle.save();
     }
   }
+
+  // Flujo de entrega de demo: el Mitsubishi L200 (ya `awarded`) se completa
+  // con vin, puja ganadora, adjudicación PAGADA, pago pagado y una Entrega
+  // con cita agendada, para poder mostrar la pantalla de entrega/custodio sin
+  // tener que recorrer manualmente todo el flujo de subasta+pago primero.
+  const l200 = savedVehicles[4]!;
+  if (!l200.vin) {
+    l200.vin = "8XATL200SEEDDEMO1";
+    await l200.save();
+  }
+
+  const l200Bid = await Bid.findOneAndUpdate(
+    { vehicleId: l200._id, userId: bruno!._id, amount: 7200 },
+    { $set: { status: "winner" } },
+    { upsert: true, returnDocument: "after", setDefaultsOnInsert: true }
+  );
+
+  const l200Adjudicacion = await Adjudicacion.findOneAndUpdate(
+    { vehicleId: l200._id },
+    {
+      $set: { estado: "PAGADA" },
+      $setOnInsert: {
+        vehicleId: l200._id,
+        ganadorBidId: l200Bid._id,
+        fechaActo: inDays(-7),
+        fechaLimitePago: inDays(-4),
+      },
+    },
+    { upsert: true, returnDocument: "after", setDefaultsOnInsert: true }
+  );
+
+  const l200Payment = await Payment.findOneAndUpdate(
+    { referenciaPago: "seed-ref-l200" },
+    {
+      $set: { status: "paid", paidAt: inDays(-5) },
+      $setOnInsert: {
+        userId: bruno!._id,
+        vehicleId: l200._id,
+        bidId: l200Bid._id,
+        amount: 7200,
+        referenciaPago: "seed-ref-l200",
+      },
+    },
+    { upsert: true, returnDocument: "after", setDefaultsOnInsert: true }
+  );
+
+  await Entrega.findOneAndUpdate(
+    { adjudicacionId: l200Adjudicacion._id },
+    {
+      $set: { citaProgramadaEn: inDays(3), estado: "CITA_AGENDADA" },
+      $setOnInsert: {
+        adjudicacionId: l200Adjudicacion._id,
+        vehicleId: l200._id,
+        paymentId: l200Payment._id,
+        compradorId: bruno!._id,
+        depositoId: deposito!._id,
+        custodioId: custodio!._id,
+      },
+    },
+    { upsert: true, returnDocument: "after", setDefaultsOnInsert: true }
+  );
 
   return {
     users: await User.countDocuments({ clerkId: /^seed-/ }),

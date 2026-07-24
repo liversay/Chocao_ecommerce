@@ -20,18 +20,53 @@ import mongoose from "mongoose";
 import { createApp } from "../src/app";
 import { logger } from "../src/lib/logger";
 import { Bid } from "../src/models/Bid";
+import { Deposito } from "../src/models/Deposito";
 import { Payment } from "../src/models/Payment";
+import { Proponente } from "../src/models/Proponente";
 import { User } from "../src/models/User";
 import { Vehicle } from "../src/models/Vehicle";
 
 const IN_7_DAYS = () => new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
 async function seed() {
-  const [admin, ana, bruno] = await Promise.all([
+  const [admin, ana, bruno, custodio] = await Promise.all([
     User.create({ clerkId: "e2e_admin", name: "Admin E2E", email: "admin@e2e.test", role: "admin" }),
     User.create({ clerkId: "e2e_ana", name: "Ana E2E", email: "ana@e2e.test", role: "customer" }),
     User.create({ clerkId: "e2e_bruno", name: "Bruno E2E", email: "bruno@e2e.test", role: "customer" }),
+    User.create({ clerkId: "e2e_custodio", name: "Custodio E2E", email: "custodio@e2e.test", role: "custodio" }),
   ]);
+
+  // Proponentes ACREDITADOS para Ana y Bruno: sin esto, el gate de
+  // acreditación del Task 5 (estaAcreditado, ver services/bids.ts) rechaza
+  // el POST /api/bids/vehicle/:id real que dispara el botón "Pujar" en
+  // 01-bidding.spec.ts, y VehicleDetailPage tampoco renderiza ese botón para
+  // un usuario no acreditado — este fixture es lo que mantiene esos specs
+  // funcionando sin tocarlos.
+  await Promise.all([
+    Proponente.create({
+      userId: ana._id,
+      documento: { canonico: "8-200-2001", original: "8-200-2001", categoria: "NACIONAL" },
+      estado: "ACREDITADO",
+      aceptoPliego: true,
+      aceptoPliegoEn: new Date(),
+      verificacion: { estado: "APROBADO", verificadoEn: new Date() },
+    }),
+    Proponente.create({
+      userId: bruno._id,
+      documento: { canonico: "8-200-2002", original: "8-200-2002", categoria: "NACIONAL" },
+      estado: "ACREDITADO",
+      aceptoPliego: true,
+      aceptoPliegoEn: new Date(),
+      verificacion: { estado: "APROBADO", verificadoEn: new Date() },
+    }),
+  ]);
+
+  await Deposito.create({
+    nombre: "Depósito E2E",
+    direccion: "Zona Libre E2E",
+    custodioIds: [custodio._id],
+    slots: [{ inicio: IN_7_DAYS(), fin: new Date(IN_7_DAYS().getTime() + 60 * 60 * 1000), capacidad: 4, ocupados: 0 }],
+  });
 
   await Vehicle.create({
     title: "Corolla E2E",
@@ -104,6 +139,7 @@ async function seed() {
     admin: admin.clerkId,
     ana: ana.clerkId,
     bruno: bruno.clerkId,
+    custodio: custodio.clerkId,
   });
 }
 

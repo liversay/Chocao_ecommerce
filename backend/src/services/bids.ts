@@ -1,9 +1,14 @@
+import type { Types } from "mongoose";
 import { ConflictError, NotFoundError, ValidationError } from "../lib/errors";
 import { metrics } from "../lib/metrics";
+import { Adjudicacion } from "../models/Adjudicacion";
 import { Bid } from "../models/Bid";
+import { Entrega } from "../models/Entrega";
 import { Payment } from "../models/Payment";
 import type { UserDoc } from "../models/User";
 import { Vehicle } from "../models/Vehicle";
+import { estaAcreditado } from "./acreditacion";
+import { recordAudit } from "./audit";
 import { notifyMany } from "./notifications";
 import { publishPublic } from "./realtime";
 import { invalidateCatalog } from "./vehicles";
@@ -24,6 +29,20 @@ export async function placeBid(user: UserDoc, vehicleId: string, amount: number)
     throw new ValidationError(
       `Tu puja debe ser mayor a la oferta actual ($${vehicle.currentPrice.toLocaleString()})`
     );
+  }
+
+  // Gate de acreditación: solo un Proponente ACREDITADO puede pujar. Corre
+  // ANTES del claim atómico para que un usuario rechazado nunca llegue a
+  // tocar vehicle.currentPrice ni a crear un Bid.
+  if (!(await estaAcreditado(user._id.toString()))) {
+    await recordAudit({
+      actor: user,
+      action: "bid.rechazada",
+      resource: "vehicle",
+      resourceId: vehicleId,
+      after: { motivo: "PROPONENTE_NO_ACREDITADO", amount },
+    });
+    throw new ValidationError("Debes completar tu acreditación antes de poder pujar");
   }
 
   // Claim atómico (optimistic locking): el update solo procede si, EN ESTE
@@ -149,6 +168,21 @@ export async function getBidHistory(
 // clara de qué requiere acción (pago pendiente en las ganadoras).
 export async function getMyBids(user: UserDoc) {
   const bids = await Bid.find({ userId: user._id }).populate("vehicleId").sort({ createdAt: -1 });
+
+  // Join por vehicleId con Adjudicacion — mismo patrón Map que getMyPurchases
+  // usa para Payment. Un vehículo tiene a lo sumo una Adjudicacion viva, así
+  // que ambos bids de un mismo vehículo (el ganador original y, tras un
+  // incumplimiento, el segundo postor) comparten el mismo documento; por eso
+  // `esSegundoPostor` se calcula por bid (comparando contra segundoBidId) en
+  // vez de asumir que solo hay un bid interesado por vehículo.
+  const vehicleIds = bids
+    .map((b) => (b.vehicleId as unknown as { _id?: Types.ObjectId } | null)?._id)
+    .filter((id): id is Types.ObjectId => Boolean(id));
+  const adjudicaciones = vehicleIds.length
+    ? await Adjudicacion.find({ vehicleId: { $in: vehicleIds } })
+    : [];
+  const adjudicacionByVehicle = new Map(adjudicaciones.map((a) => [a.vehicleId.toString(), a]));
+
   return bids.map((b) => {
     const vehicle = b.vehicleId as unknown as {
       _id: unknown;
@@ -159,6 +193,7 @@ export async function getMyBids(user: UserDoc) {
       currentPrice: number;
       status: string;
     } | null;
+    const adjudicacion = vehicle?._id ? adjudicacionByVehicle.get(String(vehicle._id)) : undefined;
     return {
       bidId: b._id.toString(),
       amount: b.amount,
@@ -174,12 +209,23 @@ export async function getMyBids(user: UserDoc) {
         currentPrice: vehicle.currentPrice,
         status: vehicle.status,
       },
+      adjudicacion: adjudicacion
+        ? {
+            id: adjudicacion._id.toString(),
+            estado: adjudicacion.estado,
+            fechaLimitePago: adjudicacion.fechaLimitePago,
+            esSegundoPostor: adjudicacion.segundoBidId?.toString() === b._id.toString(),
+          }
+        : null,
     };
   });
 }
 
 // Compras (bids pagados) del usuario dueño del token, con referencia del
-// pago — nunca datos de otros compradores.
+// pago — nunca datos de otros compradores. También trae `entrega: {id,
+// estado} | null` (join por paymentId, mismo patrón Map que el join de
+// payment) — MyPurchasesPage lo usa para mostrar el tracker de entrega y
+// decidir si ofrece "agendar cita" (solo cuando entrega es null).
 export async function getMyPurchases(user: UserDoc) {
   const bids = await Bid.find({ userId: user._id, status: "paid" })
     .populate("vehicleId")
@@ -187,6 +233,10 @@ export async function getMyPurchases(user: UserDoc) {
 
   const payments = await Payment.find({ bidId: { $in: bids.map((b) => b._id) } });
   const paymentByBid = new Map(payments.map((p) => [p.bidId.toString(), p]));
+
+  const paymentIds = payments.map((p) => p._id);
+  const entregas = paymentIds.length ? await Entrega.find({ paymentId: { $in: paymentIds } }) : [];
+  const entregaByPayment = new Map(entregas.map((e) => [e.paymentId.toString(), e]));
 
   return bids.map((b) => {
     const vehicle = b.vehicleId as unknown as {
@@ -197,6 +247,7 @@ export async function getMyPurchases(user: UserDoc) {
       year: number;
     } | null;
     const payment = paymentByBid.get(b._id.toString());
+    const entrega = payment ? entregaByPayment.get(payment._id.toString()) : undefined;
     return {
       bidId: b._id.toString(),
       amount: b.amount,
@@ -209,6 +260,7 @@ export async function getMyPurchases(user: UserDoc) {
         year: vehicle.year,
       },
       payment: payment && { id: payment._id.toString(), status: payment.status },
+      entrega: entrega ? { id: entrega._id.toString(), estado: entrega.estado } : null,
     };
   });
 }

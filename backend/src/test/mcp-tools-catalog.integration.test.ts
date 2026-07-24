@@ -3,6 +3,8 @@ import "./mocks/stripe";
 import { beforeAll, describe, expect, test } from "bun:test";
 import { __resetSecretForTests } from "../oauth/tokens";
 import "../mcp/tools";
+import { addBusinessDays } from "../lib/calendario";
+import { Adjudicacion } from "../models/Adjudicacion";
 import { setupTestDB } from "./db";
 import { createBid, createUser, createVehicle } from "./factories";
 import { obtainAccessToken } from "./oauthFlow";
@@ -211,6 +213,46 @@ describe("chocao_get_my_bids (HU-51)", () => {
     const res = await toolResult<{ bids: unknown[] }>(await callTool(app, token, "chocao_get_my_bids", {}));
     expect(res.isError).toBeUndefined();
     expect(res.data!.bids).toEqual([]);
+  });
+
+  test("una puja ganadora con Adjudicacion trae adjudicacion.fechaLimitePago y estado", async () => {
+    const ganador = await createUser();
+    const vehicle = await createVehicle();
+    const ganadorBid = await createBid(vehicle, ganador, { amount: 15_000, status: "winner" });
+
+    const fechaActo = new Date();
+    const fechaLimitePago = addBusinessDays(fechaActo, 5);
+    await Adjudicacion.create({
+      vehicleId: vehicle._id,
+      ganadorBidId: ganadorBid._id,
+      fechaActo,
+      fechaLimitePago,
+      estado: "ADJUDICADA_PENDIENTE_PAGO",
+    });
+
+    const token = await obtainAccessToken(app, ganador, "bids:read");
+    const res = await toolResult<{
+      bids: Array<{ adjudicacion: { estado: string; fechaLimitePago: string; esSegundoPostor: boolean } | null }>;
+    }>(await callTool(app, token, "chocao_get_my_bids", {}));
+
+    expect(res.isError).toBeUndefined();
+    expect(res.data!.bids[0]!.adjudicacion).not.toBeNull();
+    expect(res.data!.bids[0]!.adjudicacion!.estado).toBe("ADJUDICADA_PENDIENTE_PAGO");
+    expect(new Date(res.data!.bids[0]!.adjudicacion!.fechaLimitePago).getTime()).toBe(fechaLimitePago.getTime());
+    expect(res.data!.bids[0]!.adjudicacion!.esSegundoPostor).toBe(false);
+  });
+
+  test("una puja sin Adjudicacion trae adjudicacion: null", async () => {
+    const user = await createUser();
+    const vehicle = await createVehicle();
+    await createBid(vehicle, user, { amount: 5_000, status: "active" });
+
+    const token = await obtainAccessToken(app, user, "bids:read");
+    const res = await toolResult<{ bids: Array<{ adjudicacion: unknown }> }>(
+      await callTool(app, token, "chocao_get_my_bids", {})
+    );
+    expect(res.isError).toBeUndefined();
+    expect(res.data!.bids[0]!.adjudicacion).toBeNull();
   });
 });
 

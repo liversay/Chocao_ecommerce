@@ -4,6 +4,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { useApi } from "../hooks/useApi";
 import EmailOtpForm from "../components/EmailOtpForm";
 import AuthMethodTabs from "../components/AuthMethodTabs";
+import AcreditacionWizard from "../components/AcreditacionWizard";
 import Logo from "../components/Logo";
 import Card from "../components/Card";
 
@@ -13,6 +14,7 @@ export default function RegisterPage() {
   const navigate = useNavigate();
   const api = useApi();
   const [method, setMethod] = useState<"otp" | "password">("otp");
+  const [mostrarWizard, setMostrarWizard] = useState(false);
 
   useEffect(() => {
     if (isSignedIn && user) {
@@ -24,9 +26,41 @@ export default function RegisterPage() {
 
       api.post("/api/users/sync", { clerkId: user.id, name, email })
         .catch(() => {})
-        .finally(() => navigate("/vehicles"));
+        .finally(() => {
+          api
+            .get("/api/acreditacion/me")
+            .then((r) => {
+              if (r.data === null) {
+                setMostrarWizard(true);
+              } else {
+                navigate("/vehicles");
+              }
+            })
+            .catch(() => navigate("/vehicles"));
+        });
     }
   }, [isSignedIn, user]);
+
+  if (mostrarWizard) {
+    return (
+      <div
+        style={{
+          minHeight: "calc(100vh - 72px)",
+          background: "var(--bg-alt)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "var(--sp-6) var(--sp-5)",
+        }}
+      >
+        <div style={{ width: "100%", maxWidth: 440 }}>
+          <Card variant="elevated" padding="lg">
+            <AcreditacionWizard onCompletado={() => navigate("/vehicles")} />
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div

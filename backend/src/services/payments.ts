@@ -1,7 +1,10 @@
+import crypto from "node:crypto";
+import type { Types } from "mongoose";
 import { ConflictError, NotFoundError } from "../lib/errors";
 import { logger } from "../lib/logger";
 import { assertOwner } from "../lib/ownership";
 import stripe from "../lib/stripe";
+import { Adjudicacion } from "../models/Adjudicacion";
 import { Bid } from "../models/Bid";
 import { Payment, type IPayment, type PaymentDoc } from "../models/Payment";
 import type { UserDoc } from "../models/User";
@@ -27,6 +30,20 @@ export async function createCheckout(user: UserDoc, bidId: string): Promise<{ ur
   }
   if (bid.status !== "winner") {
     throw new ConflictError("Solo se puede pagar una puja ganadora");
+  }
+
+  // Gate del plazo legal de pago (RP-02): si existe una Adjudicacion para
+  // este vehículo (siempre que el bid ganador haya pasado por
+  // adjudicateVehicle) y venció su fechaLimitePago sin pagarse, se rechaza el
+  // checkout. Fixtures de test que crean un bid "winner" directamente (sin
+  // pasar por adjudicateVehicle) no tienen Adjudicacion — el gate no-opea.
+  const adjudicacion = await Adjudicacion.findOne({ vehicleId: bid.vehicleId._id });
+  if (
+    adjudicacion &&
+    adjudicacion.estado === "ADJUDICADA_PENDIENTE_PAGO" &&
+    adjudicacion.fechaLimitePago < new Date()
+  ) {
+    throw new ConflictError("Venció el plazo de pago de 5 días hábiles para esta adjudicación");
   }
 
   const existing = await Payment.findOne({ bidId: bid._id, status: "pending" });
@@ -93,6 +110,7 @@ export async function createCheckout(user: UserDoc, bidId: string): Promise<{ ur
       stripeSessionId: session.id,
       amount: bid.amount,
       status: "pending",
+      referenciaPago: `${vehicle._id.toString()}-${user._id.toString()}-${crypto.randomUUID()}`,
     });
   }
 
@@ -127,9 +145,14 @@ export async function confirmCheckoutSession(
     return { payment: await Payment.findOne({ stripeSessionId: session.id }), transitioned: false };
   }
 
+  claimed.paidAt = new Date();
+  await claimed.save();
+
   // Bid ganador → paid; vehículo → awarded (sets idempotentes)
   await Bid.findByIdAndUpdate(claimed.bidId, { status: "paid" });
   await Vehicle.findByIdAndUpdate(claimed.vehicleId, { status: "awarded" });
+  // Adjudicacion → PAGADA (si existe; fixtures legacy sin adjudicateVehicle no la tienen)
+  await Adjudicacion.findOneAndUpdate({ vehicleId: claimed.vehicleId }, { estado: "PAGADA" });
 
   logger.info("pago confirmado", {
     paymentId: claimed._id.toString(),
@@ -268,7 +291,11 @@ export interface ListPaymentsParams {
 }
 
 // Listado de pagos/órdenes para el backoffice, filtrable por estado y rango
-// de fecha, con comprador y vehículo poblados para la tabla.
+// de fecha, con comprador y vehículo poblados para la tabla. Cada item trae
+// además `adjudicacion: {estado, fechaLimitePago} | null` (join por
+// vehicleId, mismo patrón Map que getMyPurchases usa para Payment) — con
+// esto AdminOrders puede mostrar el plazo legal de pago y si la adjudicación
+// quedó incumplida/desierta, sin que el admin tenga que cruzar dos pantallas.
 export async function listPayments({ status, from, to, page = 1, limit = 20 }: ListPaymentsParams) {
   const filter: Record<string, unknown> = {};
   if (status) filter.status = status;
@@ -283,5 +310,25 @@ export async function listPayments({ status, from, to, page = 1, limit = 20 }: L
       .populate("vehicleId", "title brand model"),
     Payment.countDocuments(filter),
   ]);
-  return { items, total, page, pages: Math.max(1, Math.ceil(total / limit)) };
+
+  const vehicleIds = items
+    .map((p) => (p.vehicleId as unknown as { _id?: Types.ObjectId } | null)?._id)
+    .filter((id): id is Types.ObjectId => Boolean(id));
+  const adjudicaciones = vehicleIds.length
+    ? await Adjudicacion.find({ vehicleId: { $in: vehicleIds } })
+    : [];
+  const adjudicacionByVehicle = new Map(adjudicaciones.map((a) => [a.vehicleId.toString(), a]));
+
+  const itemsWithAdjudicacion = items.map((p) => {
+    const vehicleId = (p.vehicleId as unknown as { _id?: Types.ObjectId } | null)?._id;
+    const adjudicacion = vehicleId ? adjudicacionByVehicle.get(String(vehicleId)) : undefined;
+    return {
+      ...p.toObject(),
+      adjudicacion: adjudicacion
+        ? { estado: adjudicacion.estado, fechaLimitePago: adjudicacion.fechaLimitePago }
+        : null,
+    };
+  });
+
+  return { items: itemsWithAdjudicacion, total, page, pages: Math.max(1, Math.ceil(total / limit)) };
 }
