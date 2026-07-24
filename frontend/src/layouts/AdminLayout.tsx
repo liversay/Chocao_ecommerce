@@ -1,4 +1,4 @@
-import { Outlet, NavLink, Link, useNavigate } from "react-router-dom";
+import { Outlet, NavLink, Link, useNavigate } from "react-router";
 import { useClerk, useUser } from "@clerk/react";
 import { useState } from "react";
 import {

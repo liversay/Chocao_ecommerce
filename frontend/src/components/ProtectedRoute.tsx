@@ -1,5 +1,5 @@
 import { useAuth } from "@clerk/react";
-import { Navigate } from "react-router-dom";
+import { Navigate } from "react-router";
 
 interface Props {
   children: React.ReactNode;

@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router";
 import { useEffect } from "react";
 import { useUser, useAuth } from "@clerk/react";
 import { useApi } from "./hooks/useApi";

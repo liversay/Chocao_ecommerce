@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import { useClerk, useUser } from "@clerk/react";
 import { Gavel, ShoppingBag, Heart, Settings, LogOut } from "lucide-react";
 import Button from "./Button";
