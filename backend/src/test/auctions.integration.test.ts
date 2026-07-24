@@ -99,6 +99,34 @@ describe("adjudicación con segundo postor y plazo legal de pago (RP-01/RP-02)",
     expect(adjudicacion?.segundoMonto).toBeUndefined();
   });
 
+  test("adjudicateVehicle es un no-op sobre una Adjudicacion ya PAGADA (bid ganador ya paid)", async () => {
+    const ana = await createUser();
+    const vehicle = await createVehicle();
+    const pagada = await createBid(vehicle, ana!, { amount: 400, status: "paid" });
+
+    const fechaActoOriginal = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000);
+    const fechaLimitePagoOriginal = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000);
+    await Adjudicacion.create({
+      vehicleId: vehicle._id,
+      ganadorBidId: pagada._id,
+      fechaActo: fechaActoOriginal,
+      fechaLimitePago: fechaLimitePagoOriginal,
+      estado: "PAGADA",
+    });
+
+    // Simula un admin repitiendo el PATCH de estado (closed/awarded) sobre un
+    // vehículo cuyo ganador ya pagó — no debe reabrir el plazo de pago.
+    const winnerBidId = await adjudicateVehicle(vehicle._id.toString());
+
+    expect(winnerBidId).toBe(pagada._id.toString());
+    expect((await Bid.findById(pagada._id))!.status).toBe("paid");
+
+    const adjudicacion = await Adjudicacion.findOne({ vehicleId: vehicle._id });
+    expect(adjudicacion?.estado).toBe("PAGADA");
+    expect(adjudicacion?.fechaLimitePago.getTime()).toBe(fechaLimitePagoOriginal.getTime());
+    expect(adjudicacion?.fechaActo.getTime()).toBe(fechaActoOriginal.getTime());
+  });
+
   test("adjudicateVehicle aborta y no adjudica si detecta un empate en el monto más alto (RJ-02)", async () => {
     const [ana, bruno] = await Promise.all([createUser(), createUser()]);
     const vehicle = await createVehicle();

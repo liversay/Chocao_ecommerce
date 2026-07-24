@@ -49,32 +49,38 @@ export async function adjudicateVehicle(vehicleId: string): Promise<string | und
   if (highestBid.status !== "paid") {
     highestBid.status = "winner";
     await highestBid.save();
-  }
 
-  const fechaActo = new Date();
-  await Adjudicacion.findOneAndUpdate(
-    { vehicleId },
-    {
-      vehicleId,
-      ganadorBidId: highestBid._id,
-      segundoBidId: secondBid?._id,
-      segundoMonto: secondBid?.amount,
-      fechaActo,
-      fechaLimitePago: addBusinessDays(fechaActo, DIAS_HABILES_PAGO),
-      estado: "ADJUDICADA_PENDIENTE_PAGO",
-    },
-    { upsert: true, setDefaultOnInsert: true }
-  );
+    // La adjudicación (y su plazo de 5 días hábiles) solo se (re)escribe
+    // mientras el ganador siga sin pagar. Si el bid ya está paid, esta
+    // función es un no-op total sobre Adjudicacion — re-ejecutarla (p.ej.
+    // un admin repitiendo el PATCH de estado tras el pago) NO debe reabrir
+    // un plazo de pago sobre un vehículo ya vendido, ni exponer al
+    // comprador que ya pagó a una inhabilitación por incumplimiento.
+    const fechaActo = new Date();
+    await Adjudicacion.findOneAndUpdate(
+      { vehicleId },
+      {
+        vehicleId,
+        ganadorBidId: highestBid._id,
+        segundoBidId: secondBid?._id,
+        segundoMonto: secondBid?.amount,
+        fechaActo,
+        fechaLimitePago: addBusinessDays(fechaActo, DIAS_HABILES_PAGO),
+        estado: "ADJUDICADA_PENDIENTE_PAGO",
+      },
+      { upsert: true, setDefaultOnInsert: true }
+    );
 
-  if (!wasAlreadyWinner) {
-    const vehicle = await Vehicle.findById(vehicleId).select("title");
-    await notify({
-      userId: highestBid.userId,
-      type: "won",
-      title: "¡Ganaste la subasta!",
-      body: `Tu puja fue la más alta por "${vehicle?.title ?? "el vehículo"}". Tienes 5 días hábiles para completar el pago.`,
-      data: { vehicleId, bidId: highestBid._id.toString() },
-    });
+    if (!wasAlreadyWinner) {
+      const vehicle = await Vehicle.findById(vehicleId).select("title");
+      await notify({
+        userId: highestBid.userId,
+        type: "won",
+        title: "¡Ganaste la subasta!",
+        body: `Tu puja fue la más alta por "${vehicle?.title ?? "el vehículo"}". Tienes 5 días hábiles para completar el pago.`,
+        data: { vehicleId, bidId: highestBid._id.toString() },
+      });
+    }
   }
   return highestBid._id.toString();
 }
