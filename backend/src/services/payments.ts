@@ -290,7 +290,11 @@ export interface ListPaymentsParams {
 }
 
 // Listado de pagos/órdenes para el backoffice, filtrable por estado y rango
-// de fecha, con comprador y vehículo poblados para la tabla.
+// de fecha, con comprador y vehículo poblados para la tabla. Cada item trae
+// además `adjudicacion: {estado, fechaLimitePago} | null` (join por
+// vehicleId, mismo patrón Map que getMyPurchases usa para Payment) — con
+// esto AdminOrders puede mostrar el plazo legal de pago y si la adjudicación
+// quedó incumplida/desierta, sin que el admin tenga que cruzar dos pantallas.
 export async function listPayments({ status, from, to, page = 1, limit = 20 }: ListPaymentsParams) {
   const filter: Record<string, unknown> = {};
   if (status) filter.status = status;
@@ -305,5 +309,25 @@ export async function listPayments({ status, from, to, page = 1, limit = 20 }: L
       .populate("vehicleId", "title brand model"),
     Payment.countDocuments(filter),
   ]);
-  return { items, total, page, pages: Math.max(1, Math.ceil(total / limit)) };
+
+  const vehicleIds = items
+    .map((p) => (p.vehicleId as unknown as { _id?: unknown } | null)?._id)
+    .filter(Boolean);
+  const adjudicaciones = vehicleIds.length
+    ? await Adjudicacion.find({ vehicleId: { $in: vehicleIds } })
+    : [];
+  const adjudicacionByVehicle = new Map(adjudicaciones.map((a) => [a.vehicleId.toString(), a]));
+
+  const itemsWithAdjudicacion = items.map((p) => {
+    const vehicleId = (p.vehicleId as unknown as { _id?: unknown } | null)?._id;
+    const adjudicacion = vehicleId ? adjudicacionByVehicle.get(String(vehicleId)) : undefined;
+    return {
+      ...p.toObject(),
+      adjudicacion: adjudicacion
+        ? { estado: adjudicacion.estado, fechaLimitePago: adjudicacion.fechaLimitePago }
+        : null,
+    };
+  });
+
+  return { items: itemsWithAdjudicacion, total, page, pages: Math.max(1, Math.ceil(total / limit)) };
 }

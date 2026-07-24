@@ -1,5 +1,6 @@
 import { ConflictError, NotFoundError, ValidationError } from "../lib/errors";
 import { metrics } from "../lib/metrics";
+import { Adjudicacion } from "../models/Adjudicacion";
 import { Bid } from "../models/Bid";
 import { Payment } from "../models/Payment";
 import type { UserDoc } from "../models/User";
@@ -165,6 +166,21 @@ export async function getBidHistory(
 // clara de qué requiere acción (pago pendiente en las ganadoras).
 export async function getMyBids(user: UserDoc) {
   const bids = await Bid.find({ userId: user._id }).populate("vehicleId").sort({ createdAt: -1 });
+
+  // Join por vehicleId con Adjudicacion — mismo patrón Map que getMyPurchases
+  // usa para Payment. Un vehículo tiene a lo sumo una Adjudicacion viva, así
+  // que ambos bids de un mismo vehículo (el ganador original y, tras un
+  // incumplimiento, el segundo postor) comparten el mismo documento; por eso
+  // `esSegundoPostor` se calcula por bid (comparando contra segundoBidId) en
+  // vez de asumir que solo hay un bid interesado por vehículo.
+  const vehicleIds = bids
+    .map((b) => (b.vehicleId as unknown as { _id?: unknown } | null)?._id)
+    .filter(Boolean);
+  const adjudicaciones = vehicleIds.length
+    ? await Adjudicacion.find({ vehicleId: { $in: vehicleIds } })
+    : [];
+  const adjudicacionByVehicle = new Map(adjudicaciones.map((a) => [a.vehicleId.toString(), a]));
+
   return bids.map((b) => {
     const vehicle = b.vehicleId as unknown as {
       _id: unknown;
@@ -175,6 +191,7 @@ export async function getMyBids(user: UserDoc) {
       currentPrice: number;
       status: string;
     } | null;
+    const adjudicacion = vehicle?._id ? adjudicacionByVehicle.get(String(vehicle._id)) : undefined;
     return {
       bidId: b._id.toString(),
       amount: b.amount,
@@ -190,6 +207,14 @@ export async function getMyBids(user: UserDoc) {
         currentPrice: vehicle.currentPrice,
         status: vehicle.status,
       },
+      adjudicacion: adjudicacion
+        ? {
+            id: adjudicacion._id.toString(),
+            estado: adjudicacion.estado,
+            fechaLimitePago: adjudicacion.fechaLimitePago,
+            esSegundoPostor: adjudicacion.segundoBidId?.toString() === b._id.toString(),
+          }
+        : null,
     };
   });
 }

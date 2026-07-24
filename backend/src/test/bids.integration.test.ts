@@ -2,7 +2,9 @@ import "./mocks/clerk";
 import "./mocks/stripe";
 import { describe, expect, test } from "bun:test";
 import { createApp } from "../app";
+import { addBusinessDays } from "../lib/calendario";
 import { AuditLog } from "../models/AuditLog";
+import { Adjudicacion } from "../models/Adjudicacion";
 import { Bid } from "../models/Bid";
 import { Payment } from "../models/Payment";
 import { Vehicle } from "../models/Vehicle";
@@ -166,6 +168,59 @@ describe("GET /api/bids/my", () => {
 
     const unpaidRow = body.find((b) => b._id === unpaidBid._id.toString());
     expect(unpaidRow?.payment).toBeUndefined();
+  });
+
+  test("una puja sin Adjudicacion trae adjudicacion: null", async () => {
+    const buyer = await createUser();
+    const vehicle = await createVehicle();
+    await createBid(vehicle, buyer, { amount: 5_000, status: "active" });
+
+    const res = await app.request("/api/bids/my", { headers: authHeader(buyer) });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { adjudicacion: unknown }[];
+    expect(body[0]!.adjudicacion).toBeNull();
+  });
+
+  test("una puja ganadora trae adjudicacion.{estado,fechaLimitePago}, y esSegundoPostor distingue al segundo postor", async () => {
+    const [ganador, segundo] = await Promise.all([createUser(), createUser()]);
+    const vehicle = await createVehicle();
+    const ganadorBid = await createBid(vehicle, ganador, { amount: 15_000, status: "winner" });
+    const segundoBid = await createBid(vehicle, segundo, { amount: 12_000, status: "outbid" });
+
+    const fechaActo = new Date();
+    const fechaLimitePago = addBusinessDays(fechaActo, 5);
+    const adjudicacion = await Adjudicacion.create({
+      vehicleId: vehicle._id,
+      ganadorBidId: ganadorBid._id,
+      segundoBidId: segundoBid._id,
+      segundoMonto: segundoBid.amount,
+      fechaActo,
+      fechaLimitePago,
+      estado: "ADJUDICADA_PENDIENTE_PAGO",
+    });
+
+    const resGanador = await app.request("/api/bids/my", { headers: authHeader(ganador) });
+    const bodyGanador = (await resGanador.json()) as {
+      _id: string;
+      adjudicacion: { id: string; estado: string; fechaLimitePago: string; esSegundoPostor: boolean } | null;
+    }[];
+    const rowGanador = bodyGanador.find((b) => b._id === ganadorBid._id.toString())!;
+    expect(rowGanador.adjudicacion).not.toBeNull();
+    expect(rowGanador.adjudicacion!.id).toBe(adjudicacion._id.toString());
+    expect(rowGanador.adjudicacion!.estado).toBe("ADJUDICADA_PENDIENTE_PAGO");
+    expect(new Date(rowGanador.adjudicacion!.fechaLimitePago).getTime()).toBe(fechaLimitePago.getTime());
+    expect(rowGanador.adjudicacion!.esSegundoPostor).toBe(false);
+
+    const resSegundo = await app.request("/api/bids/my", { headers: authHeader(segundo) });
+    const bodySegundo = (await resSegundo.json()) as {
+      _id: string;
+      adjudicacion: { esSegundoPostor: boolean } | null;
+    }[];
+    const rowSegundo = bodySegundo.find((b) => b._id === segundoBid._id.toString())!;
+    // Comparte la MISMA Adjudicacion que el ganador (por vehicleId), pero
+    // esSegundoPostor debe distinguir que este bid es el segundoBidId.
+    expect(rowSegundo.adjudicacion).not.toBeNull();
+    expect(rowSegundo.adjudicacion!.esSegundoPostor).toBe(true);
   });
 });
 
