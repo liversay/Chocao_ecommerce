@@ -24,8 +24,10 @@ export default function AcreditacionWizard({ onCompletado }: Props) {
     try {
       await api.post("/api/acreditacion", { documento });
       setStep("pliego");
-    } catch (err: any) {
-      setError(err?.response?.data?.error || err?.message || "No pudimos validar tu documento");
+    } catch (err: unknown) {
+      const message = (err as { response?: { data?: { error?: string } }; message?: string })?.response?.data?.error
+        ?? (err as { message?: string })?.message;
+      setError(message || "No pudimos validar tu documento");
     } finally {
       setLoading(false);
     }
@@ -45,8 +47,10 @@ export default function AcreditacionWizard({ onCompletado }: Props) {
         setMotivoRechazo(data.motivoRechazo || "");
         setStep("rechazado");
       }
-    } catch (err: any) {
-      setError(err?.response?.data?.error || err?.message || "No pudimos completar la verificación");
+    } catch (err: unknown) {
+      const message = (err as { response?: { data?: { error?: string } }; message?: string })?.response?.data?.error
+        ?? (err as { message?: string })?.message;
+      setError(message || "No pudimos completar la verificación");
       setStep("pliego");
     } finally {
       setLoading(false);
