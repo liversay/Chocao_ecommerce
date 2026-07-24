@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import type { Types } from "mongoose";
 import { ConflictError, NotFoundError } from "../lib/errors";
 import { logger } from "../lib/logger";
 import { assertOwner } from "../lib/ownership";
@@ -311,15 +312,15 @@ export async function listPayments({ status, from, to, page = 1, limit = 20 }: L
   ]);
 
   const vehicleIds = items
-    .map((p) => (p.vehicleId as unknown as { _id?: unknown } | null)?._id)
-    .filter(Boolean);
+    .map((p) => (p.vehicleId as unknown as { _id?: Types.ObjectId } | null)?._id)
+    .filter((id): id is Types.ObjectId => Boolean(id));
   const adjudicaciones = vehicleIds.length
     ? await Adjudicacion.find({ vehicleId: { $in: vehicleIds } })
     : [];
   const adjudicacionByVehicle = new Map(adjudicaciones.map((a) => [a.vehicleId.toString(), a]));
 
   const itemsWithAdjudicacion = items.map((p) => {
-    const vehicleId = (p.vehicleId as unknown as { _id?: unknown } | null)?._id;
+    const vehicleId = (p.vehicleId as unknown as { _id?: Types.ObjectId } | null)?._id;
     const adjudicacion = vehicleId ? adjudicacionByVehicle.get(String(vehicleId)) : undefined;
     return {
       ...p.toObject(),

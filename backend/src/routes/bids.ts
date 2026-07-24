@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import type { Types } from "mongoose";
 import type { AppEnv } from "../types";
 import { requireAuth, requirePermission } from "../middlewares/auth";
 import { rateLimit } from "../middlewares/rateLimit";
@@ -39,8 +40,8 @@ bids.get("/my", requireAuth, async (c) => {
   const paymentByBid = new Map(payments.map((p) => [p.bidId.toString(), p]));
 
   const vehicleIds = list
-    .map((b) => (b.vehicleId as unknown as { _id?: unknown } | null)?._id)
-    .filter(Boolean);
+    .map((b) => (b.vehicleId as unknown as { _id?: Types.ObjectId } | null)?._id)
+    .filter((id): id is Types.ObjectId => Boolean(id));
   const adjudicaciones = vehicleIds.length
     ? await Adjudicacion.find({ vehicleId: { $in: vehicleIds } }).lean()
     : [];
@@ -48,7 +49,7 @@ bids.get("/my", requireAuth, async (c) => {
 
   const withPayment = list.map((bid) => {
     const payment = paymentByBid.get(bid._id.toString());
-    const vehicleId = (bid.vehicleId as unknown as { _id?: unknown } | null)?._id;
+    const vehicleId = (bid.vehicleId as unknown as { _id?: Types.ObjectId } | null)?._id;
     const adjudicacion = vehicleId ? adjudicacionByVehicle.get(String(vehicleId)) : undefined;
     return {
       ...bid,

@@ -1,3 +1,4 @@
+import type { Types } from "mongoose";
 import { ConflictError, NotFoundError, ValidationError } from "../lib/errors";
 import { metrics } from "../lib/metrics";
 import { Adjudicacion } from "../models/Adjudicacion";
@@ -174,8 +175,8 @@ export async function getMyBids(user: UserDoc) {
   // `esSegundoPostor` se calcula por bid (comparando contra segundoBidId) en
   // vez de asumir que solo hay un bid interesado por vehículo.
   const vehicleIds = bids
-    .map((b) => (b.vehicleId as unknown as { _id?: unknown } | null)?._id)
-    .filter(Boolean);
+    .map((b) => (b.vehicleId as unknown as { _id?: Types.ObjectId } | null)?._id)
+    .filter((id): id is Types.ObjectId => Boolean(id));
   const adjudicaciones = vehicleIds.length
     ? await Adjudicacion.find({ vehicleId: { $in: vehicleIds } })
     : [];
