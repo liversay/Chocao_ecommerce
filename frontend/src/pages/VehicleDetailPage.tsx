@@ -15,7 +15,7 @@ import Countdown from "../components/Countdown";
 import WatchlistButton from "../components/WatchlistButton";
 import { CONDITION_LABELS } from "../lib/labels";
 import { startCheckout } from "../lib/checkout";
-import type { Vehicle, Bid } from "../types";
+import type { Vehicle, Bid, Proponente } from "../types";
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 const CAR_PLACEHOLDER = "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=900&q=80";
@@ -35,6 +35,7 @@ export default function VehicleDetailPage() {
   const [vehicle, setVehicle] = useState<Vehicle | null>(null);
   const [bids, setBids] = useState<Bid[]>([]);
   const [myBid, setMyBid] = useState<Bid | null>(null);
+  const [proponente, setProponente] = useState<Proponente | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeImg, setActiveImg] = useState(0);
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; msg: string } | null>(null);
@@ -84,6 +85,19 @@ export default function VehicleDetailPage() {
   }
 
   useEffect(() => { loadMyBid(); }, [id, isSignedIn]);
+
+  // Estado de acreditación del proponente — gate de "pujar" (solo aplica a
+  // usuarios con sesión; el prompt de login ya cubre el caso sin sesión).
+  useEffect(() => {
+    if (!isSignedIn) {
+      setProponente(null);
+      return;
+    }
+    api
+      .get("/api/acreditacion/me")
+      .then((r) => setProponente(r.data))
+      .catch(() => setProponente(null));
+  }, [isSignedIn]);
 
   // Precio/historial en vivo (canal público, funciona sin sesión): otro
   // dispositivo pujando por este mismo vehículo actualiza esta pantalla sin
@@ -367,6 +381,15 @@ export default function VehicleDetailPage() {
                 </p>
                 <Link to="/login">
                   <Button variant="primary" fullWidth size="lg">Ingresar para pujar</Button>
+                </Link>
+              </div>
+            ) : proponente?.estado !== "ACREDITADO" ? (
+              <div style={{ textAlign: "center" }}>
+                <p className="text-muted" style={{ fontSize: "var(--t-sm)", marginBottom: "var(--sp-3)" }}>
+                  Debes completar tu acreditación para pujar en subastas de bienes aprehendidos.
+                </p>
+                <Link to="/account">
+                  <Button variant="primary" fullWidth size="lg">Completar acreditación</Button>
                 </Link>
               </div>
             ) : (

@@ -84,6 +84,19 @@ export interface WatchlistItem {
   createdAt: string;
 }
 
+export interface Proponente {
+  _id: string;
+  userId: string;
+  documento: { canonico: string; original: string; categoria: string };
+  estado: "BORRADOR" | "EN_REVISION" | "ACREDITADO" | "RECHAZADO";
+  motivoRechazo?: string;
+  aceptoPliego: boolean;
+  aceptoPliegoEn?: string;
+  verificacion: { estado: "PENDIENTE" | "APROBADO" | "RECHAZADO"; verificadoEn?: string };
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Receipt {
   paymentId: string;
   amount: number;

@@ -5,7 +5,19 @@ import Button from "../components/Button";
 import Input from "../components/Input";
 import PageHeader from "../components/PageHeader";
 import LoadingState from "../components/LoadingState";
-import type { NotificationPrefs, User } from "../types";
+import StatusBadge from "../components/StatusBadge";
+import AcreditacionWizard from "../components/AcreditacionWizard";
+import type { NotificationPrefs, Proponente, User } from "../types";
+
+// Mapea el `estado` de Proponente (backend) a las clases `badge-*` ya
+// definidas para otros dominios (vehículos, pagos) — reutiliza los colores
+// en vez de inventar variantes nuevas de badge.
+const ACREDITACION_BADGE: Record<string, { status: string; label: string }> = {
+  BORRADOR: { status: "draft", label: "Borrador" },
+  EN_REVISION: { status: "pending", label: "En revisión" },
+  ACREDITADO: { status: "active", label: "Acreditado" },
+  RECHAZADO: { status: "closed", label: "Rechazado" },
+};
 
 const PREF_LABELS: Record<keyof NotificationPrefs, { title: string; hint: string }> = {
   outbid: { title: "Puja superada", hint: "Cuando alguien ofrece más que tu puja activa." },
@@ -23,6 +35,8 @@ export default function AccountPage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [proponente, setProponente] = useState<Proponente | null>(null);
+  const [loadingAcreditacion, setLoadingAcreditacion] = useState(true);
 
   useEffect(() => {
     api
@@ -35,6 +49,17 @@ export default function AccountPage() {
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
+
+  function loadAcreditacion() {
+    setLoadingAcreditacion(true);
+    api
+      .get("/api/acreditacion/me")
+      .then((r) => setProponente(r.data))
+      .catch(() => setProponente(null))
+      .finally(() => setLoadingAcreditacion(false));
+  }
+
+  useEffect(() => { loadAcreditacion(); }, []);
 
   async function handleSave() {
     if (!prefs) return;
@@ -66,6 +91,28 @@ export default function AccountPage() {
   return (
     <div className="container fade-in" style={{ padding: "var(--sp-6) var(--sp-5)", maxWidth: 720 }}>
       <PageHeader eyebrow="Mi cuenta" title="Perfil y preferencias" subtitle="Tus datos y cómo quieres que te avisemos" />
+
+      <Card padding="lg" style={{ marginBottom: "var(--sp-5)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: proponente?.estado === "ACREDITADO" ? 0 : "var(--sp-4)" }}>
+          <h2 style={{ fontSize: "var(--t-md)" }}>Acreditación de proponente</h2>
+          {!loadingAcreditacion && (
+            <StatusBadge
+              status={proponente ? ACREDITACION_BADGE[proponente.estado].status : "draft"}
+              label={proponente ? ACREDITACION_BADGE[proponente.estado].label : "Sin iniciar"}
+            />
+          )}
+        </div>
+        {!loadingAcreditacion && proponente?.estado !== "ACREDITADO" && (
+          <div style={{ marginTop: "var(--sp-4)" }}>
+            {proponente?.estado === "RECHAZADO" && proponente.motivoRechazo && (
+              <p style={{ color: "var(--danger)", fontSize: "var(--t-xs)", marginBottom: "var(--sp-3)" }}>
+                Motivo del rechazo anterior: {proponente.motivoRechazo}
+              </p>
+            )}
+            <AcreditacionWizard onCompletado={loadAcreditacion} />
+          </div>
+        )}
+      </Card>
 
       <Card padding="lg" style={{ marginBottom: "var(--sp-5)" }}>
         <h2 style={{ fontSize: "var(--t-md)", marginBottom: "var(--sp-4)" }}>Datos personales</h2>
