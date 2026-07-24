@@ -85,4 +85,16 @@ export const migrations: Migration[] = [
         .createIndex({ referenciaPago: 1 }, { unique: true, sparse: true });
     },
   },
+  {
+    version: 6,
+    name: "vin-y-entrega-por-adjudicacion",
+    up: async (connection) => {
+      const db = connection.db!;
+      // RB-02: el VIN es el identificador unívoco del bien vehicular.
+      await db.collection("vehicles").createIndex({ vin: 1 }, { unique: true, sparse: true });
+      // A lo sumo una Entrega por adjudicación — respalda el chequeo de
+      // idempotencia de iniciarEntrega a nivel de base de datos.
+      await db.collection("entregas").createIndex({ adjudicacionId: 1 }, { unique: true });
+    },
+  },
 ];

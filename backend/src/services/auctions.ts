@@ -68,7 +68,7 @@ export async function adjudicateVehicle(vehicleId: string): Promise<string | und
         fechaLimitePago: addBusinessDays(fechaActo, DIAS_HABILES_PAGO),
         estado: "ADJUDICADA_PENDIENTE_PAGO",
       },
-      { upsert: true, setDefaultOnInsert: true }
+      { upsert: true, setDefaultsOnInsert: true }
     );
 
     if (!wasAlreadyWinner) {
