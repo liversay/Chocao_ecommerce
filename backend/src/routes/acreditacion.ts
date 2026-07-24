@@ -7,6 +7,7 @@ import {
   aceptarPliegoSchema,
   revisarAcreditacionParamSchema,
   revisarAcreditacionBodySchema,
+  listAcreditacionesQuerySchema,
 } from "../schemas/acreditacion";
 import {
   guardarBorrador,
@@ -36,12 +37,15 @@ acreditacion.post("/enviar", requireAuth, async (c) => {
   return c.json(await enviarARevision(c.get("user")));
 });
 
-acreditacion.get("/", requirePermission("acreditacion:review"), async (c) => {
-  const estado = c.req.query("estado");
-  const page = Number(c.req.query("page") ?? 1);
-  const limit = Number(c.req.query("limit") ?? 20);
-  return c.json(await listAcreditaciones({ estado, page, limit }));
-});
+acreditacion.get(
+  "/",
+  requirePermission("acreditacion:review"),
+  validate("query", listAcreditacionesQuerySchema),
+  async (c) => {
+    const { estado, page, limit } = c.req.valid("query");
+    return c.json(await listAcreditaciones({ estado, page, limit }));
+  }
+);
 
 acreditacion.patch(
   "/:id/revisar",

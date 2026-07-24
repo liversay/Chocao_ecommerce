@@ -11,6 +11,12 @@ export const aceptarPliegoSchema = z.object({
 
 export const revisarAcreditacionParamSchema = z.object({ id: objectIdSchema });
 
+export const listAcreditacionesQuerySchema = z.object({
+  estado: z.enum(["BORRADOR", "EN_REVISION", "ACREDITADO", "RECHAZADO"]).optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+});
+
 export const revisarAcreditacionBodySchema = z
   .object({
     decision: z.enum(["APROBAR", "RECHAZAR"]),
