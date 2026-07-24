@@ -206,11 +206,14 @@ export default function MyPurchasesPage() {
                         Ver acta
                       </Button>
                     )}
-                    {bid.entrega && (bid.entrega.estado === "CITA_AGENDADA" || bid.entrega.estado === "EN_INSPECCION") && (
-                      <Button variant="ghost" size="sm" onClick={() => navigate(`/entrega/${bid.entrega!.id}`)}>
-                        Ver detalle
-                      </Button>
-                    )}
+                    {bid.entrega &&
+                      (bid.entrega.estado === "CITA_AGENDADA" ||
+                        bid.entrega.estado === "EN_INSPECCION" ||
+                        bid.entrega.estado === "BLOQUEADA") && (
+                        <Button variant="ghost" size="sm" onClick={() => navigate(`/entrega/${bid.entrega!.id}`)}>
+                          Ver detalle
+                        </Button>
+                      )}
                   </div>
                 ),
               },

@@ -54,13 +54,19 @@ function CustodioLista() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api
-      .get("/api/entrega")
-      .then((r) => {
-        const nonTerminal = (r.data.items as EntregaListItem[]).filter(
-          (e) => e.estado === "CITA_AGENDADA" || e.estado === "EN_INSPECCION"
-        );
-        setItems(nonTerminal);
+    // El backend filtra por un único estado a la vez, así que se piden las
+    // dos bandejas no terminales por separado (cada una ya paginada del lado
+    // del servidor) en vez de traer la página 1 sin filtro — de lo contrario,
+    // con más de ~20 entregas en total, las pendientes más antiguas podían
+    // quedar fuera de la primera página al mezclarse con estados terminales.
+    Promise.all([
+      api.get("/api/entrega?estado=CITA_AGENDADA&limit=100"),
+      api.get("/api/entrega?estado=EN_INSPECCION&limit=100"),
+    ])
+      .then(([citaAgendada, enInspeccion]) => {
+        const items: EntregaListItem[] = [...citaAgendada.data.items, ...enInspeccion.data.items];
+        items.sort((a, b) => new Date(a.citaProgramadaEn).getTime() - new Date(b.citaProgramadaEn).getTime());
+        setItems(items);
       })
       .catch(console.error)
       .finally(() => setLoading(false));
