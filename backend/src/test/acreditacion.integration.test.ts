@@ -5,7 +5,7 @@ import { createApp } from "../app";
 import { Proponente } from "../models/Proponente";
 import { runMigrations } from "../../scripts/migrate";
 import { setupTestDB } from "./db";
-import { authHeader, createUser } from "./factories";
+import { authHeader, createUnaccreditedUser, createUser } from "./factories";
 
 setupTestDB();
 const app = createApp();
@@ -50,7 +50,7 @@ function enviarARevision(user: Awaited<ReturnType<typeof createUser>>) {
 
 describe("acreditación de proponentes (RI-01/RI-03)", () => {
   test("flujo feliz: borrador -> revisión -> acreditado, y pliego rechaza sin aceptar", async () => {
-    const user = await createUser();
+    const user = await createUnaccreditedUser();
 
     const crear = await crearBorrador(user, "8-888-8888");
     expect(crear.status).toBe(201);
@@ -77,8 +77,8 @@ describe("acreditación de proponentes (RI-01/RI-03)", () => {
   });
 
   test("dos usuarios con el mismo documento canónico: el segundo es rechazado (RI-03)", async () => {
-    const userA = await createUser();
-    const userB = await createUser();
+    const userA = await createUnaccreditedUser();
+    const userB = await createUnaccreditedUser();
 
     expect((await crearBorrador(userA, "8-888-8888")).status).toBe(201);
     expect((await aceptarPliego(userA)).status).toBe(200);
@@ -93,7 +93,7 @@ describe("acreditación de proponentes (RI-01/RI-03)", () => {
 
   test("admin puede listar y aprobar/rechazar una acreditación en EN_REVISION", async () => {
     const admin = await createUser({ role: "admin" });
-    const proponenteUser = await createUser();
+    const proponenteUser = await createUnaccreditedUser();
 
     const crear = await crearBorrador(proponenteUser, "9-777-7777");
     expect(crear.status).toBe(201);

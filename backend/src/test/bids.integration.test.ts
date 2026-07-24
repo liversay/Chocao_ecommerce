@@ -2,11 +2,12 @@ import "./mocks/clerk";
 import "./mocks/stripe";
 import { describe, expect, test } from "bun:test";
 import { createApp } from "../app";
+import { AuditLog } from "../models/AuditLog";
 import { Bid } from "../models/Bid";
 import { Payment } from "../models/Payment";
 import { Vehicle } from "../models/Vehicle";
 import { setupTestDB } from "./db";
-import { authHeader, createBid, createUser, createVehicle } from "./factories";
+import { authHeader, createBid, createUnaccreditedUser, createUser, createVehicle } from "./factories";
 import { markSessionPaid } from "./mocks/stripe";
 
 setupTestDB();
@@ -92,6 +93,43 @@ describe("reglas de negocio de pujas", () => {
     expect(res.status).toBe(200);
     expect((await Bid.findById(alta._id))!.status).toBe("winner");
     expect((await Bid.findById(baja._id))!.status).toBe("outbid");
+  });
+
+  test("placeBid rechaza a un usuario no acreditado y audita el intento", async () => {
+    const user = await createUnaccreditedUser();
+    const vehicle = await createVehicle({ basePrice: 10_000 });
+
+    const res = await app.request(`/api/bids/vehicle/${vehicle._id}`, {
+      method: "POST",
+      headers: authHeader(user),
+      body: JSON.stringify({ amount: vehicle.currentPrice + 100 }),
+    });
+
+    expect(res.status).toBe(400);
+    expect(((await res.json()) as { error: string }).error).toMatch(/acredita/i);
+    // El precio del vehículo no debe haber cambiado: el gate corre ANTES del
+    // claim atómico.
+    expect((await Vehicle.findById(vehicle._id))!.currentPrice).toBe(10_000);
+
+    const entry = await AuditLog.findOne({ action: "bid.rechazada", resourceId: vehicle._id.toString() }).sort({
+      createdAt: -1,
+    });
+    expect(entry).not.toBeNull();
+  });
+
+  test("placeBid permite pujar a un usuario ACREDITADO", async () => {
+    const user = await createUser();
+    const vehicle = await createVehicle({ basePrice: 10_000 });
+
+    const res = await app.request(`/api/bids/vehicle/${vehicle._id}`, {
+      method: "POST",
+      headers: authHeader(user),
+      body: JSON.stringify({ amount: vehicle.currentPrice + 100 }),
+    });
+
+    expect(res.status).toBe(201);
+    const bid = (await res.json()) as { status: string };
+    expect(bid.status).toBe("active");
   });
 });
 

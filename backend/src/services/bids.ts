@@ -4,6 +4,8 @@ import { Bid } from "../models/Bid";
 import { Payment } from "../models/Payment";
 import type { UserDoc } from "../models/User";
 import { Vehicle } from "../models/Vehicle";
+import { estaAcreditado } from "./acreditacion";
+import { recordAudit } from "./audit";
 import { notifyMany } from "./notifications";
 import { publishPublic } from "./realtime";
 import { invalidateCatalog } from "./vehicles";
@@ -24,6 +26,20 @@ export async function placeBid(user: UserDoc, vehicleId: string, amount: number)
     throw new ValidationError(
       `Tu puja debe ser mayor a la oferta actual ($${vehicle.currentPrice.toLocaleString()})`
     );
+  }
+
+  // Gate de acreditación: solo un Proponente ACREDITADO puede pujar. Corre
+  // ANTES del claim atómico para que un usuario rechazado nunca llegue a
+  // tocar vehicle.currentPrice ni a crear un Bid.
+  if (!(await estaAcreditado(user._id.toString()))) {
+    await recordAudit({
+      actor: user,
+      action: "bid.rechazada",
+      resource: "vehicle",
+      resourceId: vehicleId,
+      after: { motivo: "PROPONENTE_NO_ACREDITADO", amount },
+    });
+    throw new ValidationError("Debes completar tu acreditación antes de poder pujar");
   }
 
   // Claim atómico (optimistic locking): el update solo procede si, EN ESTE
