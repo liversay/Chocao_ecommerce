@@ -1,41 +1,80 @@
+import { addBusinessDays } from "../lib/calendario";
 import { logger } from "../lib/logger";
-import { NotFoundError } from "../lib/errors";
+import { ConflictError, ForbiddenError, NotFoundError } from "../lib/errors";
+import { Adjudicacion, type AdjudicacionDoc } from "../models/Adjudicacion";
 import { Bid } from "../models/Bid";
 import { Vehicle, type IVehicle, type VehicleDoc } from "../models/Vehicle";
 import { recordAudit } from "./audit";
 import { invalidateCatalog } from "./vehicles";
-import type { UserDoc } from "../models/User";
+import { User, type UserDoc } from "../models/User";
 import { notify, notifyMany } from "./notifications";
 import { publishPublic } from "./realtime";
 import { Watchlist } from "../models/Watchlist";
 
-// Adjudicación: la puja más alta del vehículo queda winner y el resto outbid.
-// Idempotente — re-ejecutarla no cambia el resultado. La comparten el cambio
-// de estado manual (ruta admin), el job de cierre automático y la futura tool
-// MCP chocao_set_vehicle_status.
+const DIAS_HABILES_PAGO = 5;
+const SEGUNDO_POSTOR_DIAS_HABILES = Number(process.env.SEGUNDO_POSTOR_DIAS_HABILES ?? "2");
+
+// Adjudicación (RP-01/RP-02): la puja más alta del vehículo queda winner, el
+// resto outbid, y se persiste el acto formal en Adjudicacion con el segundo
+// mejor postor (para RP-05 si el ganador incumple) y el plazo legal de pago
+// de 5 días hábiles. Idempotente — re-ejecutarla no cambia el resultado. La
+// comparten el cambio de estado manual (ruta admin), el job de cierre
+// automático y la futura tool MCP chocao_set_vehicle_status.
 export async function adjudicateVehicle(vehicleId: string): Promise<string | undefined> {
-  const highestBid = await Bid.findOne({ vehicleId }).sort({ amount: -1 });
-  if (!highestBid) return undefined;
+  const ranking = await Bid.find({ vehicleId }).sort({ amount: -1, createdAt: 1 });
+  if (ranking.length === 0) return undefined;
+
+  const highestBid = ranking[0]!;
+  const secondBid = ranking[1];
+  if (secondBid && secondBid.amount === highestBid.amount) {
+    // RJ-02: el empate es estructuralmente imposible bajo RS-10 (toda puja
+    // debe superar estrictamente la vigente). Si ocurre, es un bug de
+    // concurrencia — se aborta el cierre y se escala, nunca se desempata.
+    await recordAudit({
+      action: "adjudicacion.empate_detectado",
+      resource: "vehicle",
+      resourceId: vehicleId,
+      after: { montoEmpatado: highestBid.amount, bidIds: [highestBid._id, secondBid._id] },
+    });
+    logger.error("empate detectado al adjudicar — requiere intervención manual", { vehicleId });
+    return undefined;
+  }
 
   await Bid.updateMany(
     { vehicleId, _id: { $ne: highestBid._id }, status: { $ne: "paid" } },
     { status: "outbid" }
   );
+
+  const wasAlreadyWinner = highestBid.status === "winner";
   if (highestBid.status !== "paid") {
-    const wasAlreadyWinner = highestBid.status === "winner";
     highestBid.status = "winner";
     await highestBid.save();
+  }
 
-    if (!wasAlreadyWinner) {
-      const vehicle = await Vehicle.findById(vehicleId).select("title");
-      await notify({
-        userId: highestBid.userId,
-        type: "won",
-        title: "¡Ganaste la subasta!",
-        body: `Tu puja fue la más alta por "${vehicle?.title ?? "el vehículo"}". Completa el pago para adjudicarlo.`,
-        data: { vehicleId, bidId: highestBid._id.toString() },
-      });
-    }
+  const fechaActo = new Date();
+  await Adjudicacion.findOneAndUpdate(
+    { vehicleId },
+    {
+      vehicleId,
+      ganadorBidId: highestBid._id,
+      segundoBidId: secondBid?._id,
+      segundoMonto: secondBid?.amount,
+      fechaActo,
+      fechaLimitePago: addBusinessDays(fechaActo, DIAS_HABILES_PAGO),
+      estado: "ADJUDICADA_PENDIENTE_PAGO",
+    },
+    { upsert: true, setDefaultOnInsert: true }
+  );
+
+  if (!wasAlreadyWinner) {
+    const vehicle = await Vehicle.findById(vehicleId).select("title");
+    await notify({
+      userId: highestBid.userId,
+      type: "won",
+      title: "¡Ganaste la subasta!",
+      body: `Tu puja fue la más alta por "${vehicle?.title ?? "el vehículo"}". Tienes 5 días hábiles para completar el pago.`,
+      data: { vehicleId, bidId: highestBid._id.toString() },
+    });
   }
   return highestBid._id.toString();
 }
@@ -150,4 +189,108 @@ export async function notifyClosingSoonWatchers(): Promise<number> {
     notified += watcherIds.length;
   }
   return notified;
+}
+
+// Recorre las adjudicaciones vencidas sin pago y aplica la consecuencia de
+// RP-04: pérdida de la adjudicación y, la inhabilitación se modela con el
+// baneo ya existente en el sistema (User.banned + banReason), no con un
+// registro de inhabilitados aparte. Si hay segundo postor, se le ofrece la
+// adjudicación (RP-05) en vez de declarar desierto directamente. Cada
+// adjudicación vencida se reclama con un claim atómico
+// (ADJUDICADA_PENDIENTE_PAGO→INCUMPLIDA), igual que closeExpiredAuctions: un
+// tick duplicado o varias instancias del job no procesan la misma dos veces.
+export async function procesarIncumplimientos(): Promise<number> {
+  let procesados = 0;
+  for (;;) {
+    const vencida = await Adjudicacion.findOneAndUpdate(
+      { estado: "ADJUDICADA_PENDIENTE_PAGO", fechaLimitePago: { $lte: new Date() } },
+      { estado: "INCUMPLIDA" },
+      { returnDocument: "after" }
+    );
+    if (!vencida) break;
+
+    const bidGanador = await Bid.findById(vencida.ganadorBidId);
+    if (bidGanador) {
+      await User.findByIdAndUpdate(bidGanador.userId, {
+        banned: true,
+        banReason: "INCUMPLIMIENTO_PAGO",
+        bannedAt: new Date(),
+      });
+      await notify({
+        userId: bidGanador.userId,
+        type: "banned",
+        title: "Cuenta suspendida por incumplimiento de pago",
+        body: "No completaste el pago dentro del plazo legal de 5 días hábiles y tu cuenta fue suspendida.",
+        data: {},
+      });
+    }
+
+    if (vencida.segundoBidId) {
+      vencida.estado = "OFERTA_A_SEGUNDO";
+      vencida.ofertaSegundoVenceEn = addBusinessDays(new Date(), SEGUNDO_POSTOR_DIAS_HABILES);
+      await vencida.save();
+      const segundoBid = await Bid.findById(vencida.segundoBidId);
+      if (segundoBid) {
+        await notify({
+          userId: segundoBid.userId,
+          type: "won",
+          title: "Se te ofrece la adjudicación como segundo mejor postor",
+          body: "El adjudicatario original incumplió el pago. Puedes aceptar la adjudicación por tu oferta.",
+          data: { vehicleId: vencida.vehicleId.toString() },
+        });
+      }
+    } else {
+      vencida.estado = "DESIERTO_POR_INCUMPLIMIENTO";
+      await vencida.save();
+    }
+
+    await recordAudit({
+      action: "adjudicacion.incumplida",
+      resource: "adjudicacion",
+      resourceId: vencida._id.toString(),
+      after: { estado: vencida.estado },
+      source: "job",
+    });
+    procesados += 1;
+  }
+  return procesados;
+}
+
+// El segundo postor acepta la oferta (RP-05): se convierte en el nuevo
+// ganador con su propio plazo de pago de 5 días hábiles.
+export async function aceptarOfertaSegundoPostor(adjudicacionId: string, user: UserDoc): Promise<AdjudicacionDoc> {
+  const adjudicacion = await Adjudicacion.findById(adjudicacionId);
+  if (!adjudicacion) throw new NotFoundError("Adjudicación no encontrada");
+  if (adjudicacion.estado !== "OFERTA_A_SEGUNDO") throw new ConflictError("Esta oferta ya no está disponible");
+  if (adjudicacion.ofertaSegundoVenceEn && adjudicacion.ofertaSegundoVenceEn < new Date()) {
+    adjudicacion.estado = "DESIERTO_POR_INCUMPLIMIENTO";
+    await adjudicacion.save();
+    throw new ConflictError("La ventana para aceptar la oferta ya venció");
+  }
+  const segundoBid = await Bid.findById(adjudicacion.segundoBidId);
+  if (!segundoBid || segundoBid.userId.toString() !== user._id.toString()) {
+    throw new ForbiddenError("Solo el segundo mejor postor puede aceptar esta oferta");
+  }
+
+  segundoBid.status = "winner";
+  await segundoBid.save();
+  const fechaActo = new Date();
+  adjudicacion.ganadorBidId = segundoBid._id;
+  adjudicacion.segundoBidId = undefined;
+  adjudicacion.segundoMonto = undefined;
+  adjudicacion.fechaActo = fechaActo;
+  adjudicacion.fechaLimitePago = addBusinessDays(fechaActo, DIAS_HABILES_PAGO);
+  adjudicacion.estado = "ADJUDICADA_PENDIENTE_PAGO";
+  adjudicacion.ofertaSegundoVenceEn = undefined;
+  await adjudicacion.save();
+
+  await recordAudit({
+    actor: user,
+    action: "adjudicacion.segundo_postor_acepto",
+    resource: "adjudicacion",
+    resourceId: adjudicacion._id.toString(),
+    after: { estado: adjudicacion.estado },
+  });
+
+  return adjudicacion;
 }

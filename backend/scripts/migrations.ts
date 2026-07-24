@@ -72,4 +72,17 @@ export const migrations: Migration[] = [
         .createIndex({ "documento.canonico": 1 }, { unique: true });
     },
   },
+  {
+    version: 5,
+    name: "adjudicacion-y-referencia-pago",
+    up: async (connection) => {
+      const db = connection.db!;
+      // RP-01: a lo sumo una adjudicación viva por vehículo.
+      await db.collection("adjudicacions").createIndex({ vehicleId: 1 }, { unique: true });
+      // RP-03: la referencia de pago es única por acto de pago.
+      await db
+        .collection("payments")
+        .createIndex({ referenciaPago: 1 }, { unique: true, sparse: true });
+    },
+  },
 ];

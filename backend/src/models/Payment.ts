@@ -7,6 +7,8 @@ export interface IPayment {
   stripeSessionId?: string;
   amount: number;
   status: "pending" | "paid" | "cancelled" | "refunded";
+  paidAt?: Date;
+  referenciaPago?: string;
   createdAt: Date;
 }
 
@@ -20,6 +22,11 @@ const paymentSchema = new mongoose.Schema<IPayment>(
     stripeSessionId: { type: String },
     amount: { type: Number, required: true },
     status: { type: String, enum: ["pending", "paid", "cancelled", "refunded"], default: "pending" },
+    paidAt: { type: Date },
+    // Traza única del pago ligada a vehículo+adjudicatario (RP-03); no es la
+    // sesión de Stripe (esa puede reutilizarse en reintentos) sino la
+    // referencia de negocio del acto de pago.
+    referenciaPago: { type: String, unique: true, sparse: true },
   },
   { timestamps: { createdAt: "createdAt", updatedAt: false } }
 );
