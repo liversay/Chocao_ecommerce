@@ -19,6 +19,13 @@ const ACREDITACION_BADGE: Record<string, { status: string; label: string }> = {
   RECHAZADO: { status: "closed", label: "Rechazado" },
 };
 
+const MOTIVO_RECHAZO_LABELS: Record<string, string> = {
+  DOCUMENTO_INVALIDO: "El documento de identidad no tiene un formato válido",
+  DOCUMENTO_DUPLICADO: "El documento ya está registrado por otro usuario",
+  VERIFICACION_FALLIDA: "No pudimos verificar tu identidad",
+  OTRO: "Motivo no especificado",
+};
+
 const PREF_LABELS: Record<keyof NotificationPrefs, { title: string; hint: string }> = {
   outbid: { title: "Puja superada", hint: "Cuando alguien ofrece más que tu puja activa." },
   won: { title: "Subasta ganada", hint: "Cuando tu puja resulta ganadora al cerrar la subasta." },
@@ -106,7 +113,7 @@ export default function AccountPage() {
           <div style={{ marginTop: "var(--sp-4)" }}>
             {proponente?.estado === "RECHAZADO" && proponente.motivoRechazo && (
               <p style={{ color: "var(--danger)", fontSize: "var(--t-xs)", marginBottom: "var(--sp-3)" }}>
-                Motivo del rechazo anterior: {proponente.motivoRechazo}
+                Motivo del rechazo anterior: {MOTIVO_RECHAZO_LABELS[proponente.motivoRechazo] ?? proponente.motivoRechazo}
               </p>
             )}
             <AcreditacionWizard onCompletado={loadAcreditacion} />
